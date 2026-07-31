@@ -1,12 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Clock,
-  RotateCcw,
-  SlidersHorizontal,
-  Globe,
-  Undo2,
-  Redo2,
-} from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Clock, RotateCcw, SlidersHorizontal, Globe, Undo2, Redo2 } from "lucide-react";
 
 interface HeaderProps {
   initialValue: string;
@@ -31,21 +24,20 @@ export const Header: React.FC<HeaderProps> = ({
   onUndo,
   onRedo,
 }) => {
-  const [deviceTimezone, setDeviceTimezone] = useState<string>('');
+  const [deviceTimezone, setDeviceTimezone] = useState<string>("");
 
   useEffect(() => {
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      setDeviceTimezone(tz || 'UTC');
+      setDeviceTimezone(tz || "UTC");
     } catch {
-      setDeviceTimezone('UTC');
+      setDeviceTimezone("UTC");
     }
   }, []);
 
   return (
     <header className="bg-slate-900/90 border-b border-slate-800 backdrop-blur-md sticky top-0 z-30 px-4 py-3 sm:px-6">
       <div className="w-full mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        
         {/* Timezone & Title */}
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-400 shrink-0">
@@ -56,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Device Timezone - Prominent & Medium text */}
               <span className="text-xs sm:text-sm font-semibold text-indigo-300 bg-indigo-950/90 border border-indigo-700/60 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
                 <Globe className="w-4 h-4 text-indigo-400" />
-                {deviceTimezone || 'Cargando zona horaria...'}
+                {deviceTimezone || "Cargando zona horaria..."}
               </span>
               <h1 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
                 Simulador de Conversión de Fecha/Hora
@@ -70,7 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Action Controls: Undo/Redo, Fecha de prueba & Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          
           {/* Undo / Redo Group */}
           <div className="flex items-center bg-slate-950/70 border border-slate-800 rounded-lg p-0.5 shadow-sm">
             <button
@@ -78,9 +69,9 @@ export const Header: React.FC<HeaderProps> = ({
               disabled={!canUndo}
               title="Deshacer (Ctrl+Z)"
               className={`p-1.5 rounded-md flex items-center justify-center transition ${
-                canUndo
-                  ? 'text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer'
-                  : 'text-slate-600 cursor-not-allowed opacity-50'
+                canUndo ?
+                  "text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer"
+                : "text-slate-600 cursor-not-allowed opacity-50"
               }`}
             >
               <Undo2 className="w-4 h-4" />
@@ -91,9 +82,9 @@ export const Header: React.FC<HeaderProps> = ({
               disabled={!canRedo}
               title="Rehacer (Ctrl+Y / Cmd+Shift+Z)"
               className={`p-1.5 rounded-md flex items-center justify-center transition ${
-                canRedo
-                  ? 'text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer'
-                  : 'text-slate-600 cursor-not-allowed opacity-50'
+                canRedo ?
+                  "text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer"
+                : "text-slate-600 cursor-not-allowed opacity-50"
               }`}
             >
               <Redo2 className="w-4 h-4" />
@@ -118,9 +109,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onToggleCatalog}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              isCatalogOpen
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400'
-                : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700'
+              isCatalogOpen ?
+                "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400"
+              : "bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700"
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -136,12 +127,8 @@ export const Header: React.FC<HeaderProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
             Vaciar tablero
           </button>
-
         </div>
-
       </div>
     </header>
   );
 };
-
-

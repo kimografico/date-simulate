@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { ColumnConfig, ConversionItem } from '../types';
 import { CONVERSION_CATALOG } from '../data/conversions';
 import {
@@ -19,6 +19,9 @@ interface ConversionColumnProps {
   onUpdateSteps: (columnId: string, steps: string[]) => void;
 }
 
+const COPY_CLASS = 'ring-2 ring-emerald-400/70 bg-emerald-500/10';
+const MOVE_CLASS = 'ring-2 ring-indigo-400/70 bg-indigo-500/10';
+
 export const ConversionColumn: React.FC<ConversionColumnProps> = ({
   topColumnConfig,
   topInputString,
@@ -26,14 +29,16 @@ export const ConversionColumn: React.FC<ConversionColumnProps> = ({
   bottomInputString,
   onUpdateSteps,
 }) => {
-  const [draggedInfo, setDraggedInfo] = useState<{ columnId: string; index: number } | null>(null);
   const [hoverTooltip, setHoverTooltip] = useState<{ item: ConversionItem; x: number; y: number } | null>(null);
+  const topSectionRef = useRef<HTMLDivElement>(null);
+  const bottomSectionRef = useRef<HTMLDivElement>(null);
+  const topEnterCount = useRef(0);
+  const bottomEnterCount = useRef(0);
 
   const formatFunctionCode = (fnStr: string) => {
     if (!fnStr) return '';
     const lines = fnStr.split('\n');
     if (lines.length <= 1) return fnStr;
-
     let minIndent = Infinity;
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
@@ -45,17 +50,14 @@ export const ConversionColumn: React.FC<ConversionColumnProps> = ({
         minIndent = 0;
       }
     }
-
     if (minIndent > 0 && minIndent !== Infinity) {
       return lines
         .map((line, i) => (i === 0 ? line : line.startsWith(' '.repeat(minIndent)) ? line.slice(minIndent) : line))
         .join('\n');
     }
-
     return fnStr;
   };
 
-  // Helper to calculate steps with output
   const getStepsList = (config: ColumnConfig, input: string) => {
     let current = input;
     return config.steps.map((step) => {
@@ -90,7 +92,7 @@ export const ConversionColumn: React.FC<ConversionColumnProps> = ({
     onUpdateSteps(columnId, newSteps);
   };
 
-  const handleDrop = (e: React.DragEvent, targetColumnId: string, targetIndex?: number) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetColumnId: string, targetIndex?: number) => {
     e.preventDefault();
     try {
       const dataStr = e.dataTransfer.getData('text/plain');
@@ -101,33 +103,84 @@ export const ConversionColumn: React.FC<ConversionColumnProps> = ({
       const currentSteps = targetConfig.steps.map((s) => s.conversionId);
 
       if (data.source === 'catalog') {
-        const newSteps = [...currentSteps, data.conversionId];
-        onUpdateSteps(targetColumnId, newSteps);
-      } else if (data.source === 'column_reorder' && data.columnId === targetColumnId && draggedInfo?.index !== undefined) {
+        const insertIdx = targetIndex !== undefined ? targetIndex : currentSteps.length;
         const newSteps = [...currentSteps];
-        const [moved] = newSteps.splice(draggedInfo.index, 1);
-        const insertIdx = targetIndex !== undefined ? targetIndex : newSteps.length;
-        newSteps.splice(insertIdx, 0, moved);
+        newSteps.splice(insertIdx, 0, data.conversionId);
         onUpdateSteps(targetColumnId, newSteps);
+      } else if (data.source === 'column_reorder' && data.conversionId) {
+        if (data.columnId === targetColumnId) {
+          const newSteps = [...currentSteps];
+          newSteps.splice(data.index, 1);
+          const insertIdx = targetIndex !== undefined ? targetIndex : newSteps.length;
+          newSteps.splice(insertIdx, 0, data.conversionId);
+          onUpdateSteps(targetColumnId, newSteps);
+        } else {
+          const isCopy = e.shiftKey;
+
+          if (!isCopy) {
+            const sourceConfig = data.columnId === topColumnConfig.id ? topColumnConfig : bottomColumnConfig;
+            const sourceSteps = sourceConfig.steps.map((s) => s.conversionId);
+            const newSourceSteps = sourceSteps.filter((_, i) => i !== data.index);
+            onUpdateSteps(data.columnId, newSourceSteps);
+          }
+
+          const newTargetSteps = [...currentSteps];
+          const insertIdx = targetIndex !== undefined ? targetIndex : newTargetSteps.length;
+          newTargetSteps.splice(insertIdx, 0, data.conversionId);
+          onUpdateSteps(targetColumnId, newTargetSteps);
+        }
       }
     } catch {
       // ignore invalid drag
-    } finally {
-      setDraggedInfo(null);
     }
-  };
+  }, [topColumnConfig, bottomColumnConfig, onUpdateSteps]);
 
   const renderChipSection = (config: ColumnConfig, inputStr: string, isTop: boolean) => {
     const stepsList = getStepsList(config, inputStr);
     const stepIds = config.steps.map((s) => s.conversionId);
+    const sectionRef = isTop ? topSectionRef : bottomSectionRef;
+    const enterCountRef = isTop ? topEnterCount : bottomEnterCount;
+
+    const updateHighlight = (el: HTMLDivElement, isCopy: boolean) => {
+      el.classList.remove(...COPY_CLASS.split(' '), ...MOVE_CLASS.split(' '));
+      el.classList.add(...(isCopy ? COPY_CLASS : MOVE_CLASS).split(' '));
+    };
+    const removeHighlight = (el: HTMLDivElement) => {
+      el.classList.remove(...COPY_CLASS.split(' '), ...MOVE_CLASS.split(' '));
+    };
 
     return (
       <div
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleDrop(e, config.id)}
-        className="flex-1 flex flex-col justify-center py-2"
+        ref={sectionRef}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          enterCountRef.current++;
+          if (enterCountRef.current === 1 && sectionRef.current) {
+            updateHighlight(sectionRef.current, e.shiftKey);
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = e.shiftKey ? 'copy' : 'move';
+          if (enterCountRef.current > 0 && sectionRef.current) {
+            updateHighlight(sectionRef.current, e.shiftKey);
+          }
+        }}
+        onDragLeave={() => {
+          enterCountRef.current--;
+          if (enterCountRef.current <= 0) {
+            enterCountRef.current = 0;
+            if (sectionRef.current) removeHighlight(sectionRef.current);
+          }
+        }}
+        onDrop={(e) => {
+          enterCountRef.current = 0;
+          if (sectionRef.current) removeHighlight(sectionRef.current);
+          handleDrop(e, config.id);
+        }}
+        className="flex-1 flex flex-col justify-center py-2 rounded-lg transition-all duration-150"
       >
-        {/* Direction header without card box */}
+        {/* Direction header */}
         <div className="flex items-center justify-between mb-1.5 px-1">
           <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
             {isTop ? (
@@ -150,9 +203,7 @@ export const ConversionColumn: React.FC<ConversionColumnProps> = ({
 
         {/* Stack of Chips or Clean Drop Target */}
         {stepIds.length === 0 ? (
-          <div
-            className="border border-dashed border-slate-800/80 hover:border-indigo-500/40 rounded-lg p-2 flex flex-col items-center justify-center text-center transition min-h-[55px]"
-          >
+          <div className="border border-dashed border-slate-800/80 hover:border-indigo-500/40 rounded-lg p-2 flex flex-col items-center justify-center text-center transition min-h-[55px]">
             <span className="text-xs text-slate-400 font-medium">Sin Conversiones</span>
           </div>
         ) : (
@@ -163,24 +214,20 @@ export const ConversionColumn: React.FC<ConversionColumnProps> = ({
                 <div
                   key={`${step.id}-${idx}`}
                   draggable
-                  onMouseEnter={(e) => {
-                    setHoverTooltip({ item, x: e.clientX, y: e.clientY });
-                  }}
-                  onMouseMove={(e) => {
-                    setHoverTooltip({ item, x: e.clientX, y: e.clientY });
-                  }}
-                  onMouseLeave={() => {
-                    setHoverTooltip(null);
-                  }}
+                  onMouseEnter={(e) => setHoverTooltip({ item, x: e.clientX, y: e.clientY })}
+                  onMouseMove={(e) => setHoverTooltip({ item, x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHoverTooltip(null)}
                   onDragStart={(e) => {
                     setHoverTooltip(null);
-                    setDraggedInfo({ columnId: config.id, index: idx });
-                    e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'column_reorder', columnId: config.id, index: idx }));
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'column_reorder', columnId: config.id, index: idx, conversionId: item.id }));
+                    e.dataTransfer.effectAllowed = 'all';
                   }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.stopPropagation();
                     setHoverTooltip(null);
+                    enterCountRef.current = 0;
+                    if (sectionRef.current) removeHighlight(sectionRef.current);
                     handleDrop(e, config.id, idx);
                   }}
                   className="bg-slate-900/90 border border-slate-700/70 hover:border-indigo-500/60 rounded-md p-1.5 transition shadow-sm cursor-grab active:cursor-grabbing"
@@ -231,7 +278,7 @@ export const ConversionColumn: React.FC<ConversionColumnProps> = ({
 
       {renderChipSection(bottomColumnConfig, bottomInputString, false)}
 
-      {/* Floating Tooltip Recuadro with Function apply contents */}
+      {/* Floating Tooltip */}
       {hoverTooltip && (
         <div
           style={{
