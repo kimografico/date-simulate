@@ -1,0 +1,6 @@
+{
+  "name": "Simulador de Conversión de Fecha/Hora",
+  "description": "Herramienta visual para simular el flujo y conversión de fechas entre las capas Front, ASO, APX y HOST.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
