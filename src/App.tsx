@@ -1,75 +1,52 @@
 import React, { useState, useMemo } from "react";
-import { ColumnConfig, ColumnStep, CalculatedNode } from "./types";
-import { CONVERSION_CATALOG, INITIAL_PRESETS } from "./data/conversions";
+import { ColumnConfig, ColumnStep, CalculatedNode, Board } from "./types";
+import { CONVERSION_CATALOG } from "./data/conversions";
 import { parseFlexibleDate, isDST, calculateUTCReference } from "./utils/timezone";
 import { CircuitBoard } from "./components/CircuitBoard";
 import { CatalogDrawer } from "./components/CatalogDrawer";
 import { SummaryPanel } from "./components/SummaryPanel";
 import { EquivalenciesModal } from "./components/EquivalenciesModal";
 import { Header } from "./components/Header";
+import { PinConfirmationModal } from "./components/PinConfirmationModal";
+import { NewBoardModal } from "./components/NewBoardModal";
+import {
+  getLocalBoards,
+  saveLocalBoards,
+  fetchBoardsFromNpoint,
+  saveBoardsToNpoint,
+  getStoredBinId,
+  DEFAULT_INITIAL_BOARD,
+} from "./utils/npointService";
 import { useHistory } from "./hooks/useHistory";
-import { SlidersHorizontal, Trash2, Calendar, Globe, Clock } from "lucide-react";
 
 interface BoardSnapshot {
   initialInputValue: string;
   columns: Record<string, ColumnConfig>;
 }
 
-const DEFAULT_BOARD_SNAPSHOT: BoardSnapshot = {
-  initialInputValue: "2026-07-30T23:30:00+02:00",
-  columns: {
-    ida_front_aso: {
-      id: "ida_front_aso",
-      name: "Front → ASO",
-      direction: "ida",
-      fromLayer: "front",
-      toLayer: "aso",
-      steps: [],
-    },
-    ida_aso_apx: {
-      id: "ida_aso_apx",
-      name: "ASO → APX",
-      direction: "ida",
-      fromLayer: "aso",
-      toLayer: "apx",
-      steps: [],
-    },
-    ida_apx_host: {
-      id: "ida_apx_host",
-      name: "APX → HOST",
-      direction: "ida",
-      fromLayer: "apx",
-      toLayer: "host",
-      steps: [{ id: "default_apx_host_fmt_european", conversionId: "fmt_european" }],
-    },
-    vuelta_host_apx: {
-      id: "vuelta_host_apx",
-      name: "HOST → APX",
-      direction: "vuelta",
-      fromLayer: "host",
-      toLayer: "apx",
-      steps: [],
-    },
-    vuelta_apx_aso: {
-      id: "vuelta_apx_aso",
-      name: "APX → ASO",
-      direction: "vuelta",
-      fromLayer: "apx",
-      toLayer: "aso",
-      steps: [],
-    },
-    vuelta_aso_front: {
-      id: "vuelta_aso_front",
-      name: "ASO → Front",
-      direction: "vuelta",
-      fromLayer: "aso",
-      toLayer: "front",
-      steps: [],
-    },
-  },
-};
-
 export default function App() {
+  const [storageMode, setStorageMode] = useState<'local' | 'npoint'>('local');
+  const [boards, setBoards] = useState<Board[]>(() => getLocalBoards());
+  const [activeBoardId, setActiveBoardId] = useState<string>(() => boards[0]?.id || DEFAULT_INITIAL_BOARD.id);
+  const [binId] = useState<string>(() => getStoredBinId());
+  const [isSavingNpoint, setIsSavingNpoint] = useState(false);
+
+  // Modals state
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinAction, setPinAction] = useState<'save' | 'delete'>('save');
+  const [newBoardModalOpen, setNewBoardModalOpen] = useState(false);
+
+  const activeBoard = useMemo(() => {
+    const found = boards.find((b) => b.id === activeBoardId);
+    if (found) return found;
+    if (boards.length > 0) return boards[0];
+    return {
+      ...DEFAULT_INITIAL_BOARD,
+      id: activeBoardId || 'temp-board',
+      name: 'Nuevo Tablero',
+    };
+  }, [boards, activeBoardId]);
+
   const {
     state: boardState,
     set: setBoardState,
@@ -77,7 +54,143 @@ export default function App() {
     redo,
     canUndo,
     canRedo,
-  } = useHistory<BoardSnapshot>(DEFAULT_BOARD_SNAPSHOT);
+  } = useHistory<BoardSnapshot>({
+    initialInputValue: activeBoard.initialInputValue,
+    columns: activeBoard.columns,
+  });
+
+  // Handle switching between Local and Remoto (npoint.io)
+  const handleToggleStorageMode = async (newMode: 'local' | 'npoint') => {
+    if (newMode === storageMode) return;
+    setStorageMode(newMode);
+
+    if (newMode === 'npoint') {
+      setIsSavingNpoint(true);
+      const { boards: remoteBoards } = await fetchBoardsFromNpoint(binId);
+      setIsSavingNpoint(false);
+      if (remoteBoards.length > 0) {
+        setBoards(remoteBoards);
+        setActiveBoardId(remoteBoards[0].id);
+        setBoardState({
+          initialInputValue: remoteBoards[0].initialInputValue,
+          columns: remoteBoards[0].columns,
+        });
+      }
+    } else {
+      const localBs = getLocalBoards();
+      setBoards(localBs);
+      if (localBs.length > 0) {
+        setActiveBoardId(localBs[0].id);
+        setBoardState({
+          initialInputValue: localBs[0].initialInputValue,
+          columns: localBs[0].columns,
+        });
+      }
+    }
+  };
+
+  // When switching active board, sync history state
+  const handleSelectBoard = (boardId: string) => {
+    const target = boards.find((b) => b.id === boardId);
+    if (target) {
+      setActiveBoardId(boardId);
+      setBoardState({
+        initialInputValue: target.initialInputValue,
+        columns: target.columns,
+      });
+    }
+  };
+
+  // Handle Save Board
+  const handleConfirmSaveBoard = async (customName?: string) => {
+    setIsSavingNpoint(true);
+    const finalName = customName && customName.trim() ? customName.trim() : (activeBoard.name || 'Nuevo Tablero');
+
+    const updatedBoard: Board = {
+      ...activeBoard,
+      name: finalName,
+      initialInputValue: boardState.initialInputValue,
+      columns: boardState.columns,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const exists = boards.some((b) => b.id === activeBoard.id);
+    let nextBoards: Board[];
+
+    if (exists) {
+      nextBoards = boards.map((b) => (b.id === activeBoard.id ? updatedBoard : b));
+    } else {
+      const savedId = activeBoard.id === 'temp-board' ? `board_${Date.now()}` : activeBoard.id;
+      const boardToSave = { ...updatedBoard, id: savedId };
+      nextBoards = [...boards, boardToSave];
+      setActiveBoardId(savedId);
+    }
+
+    setBoards(nextBoards);
+
+    if (storageMode === 'npoint') {
+      await saveBoardsToNpoint(binId, nextBoards);
+    } else {
+      saveLocalBoards(nextBoards);
+    }
+    setIsSavingNpoint(false);
+  };
+
+  // Handle Delete Board
+  const handleConfirmDeleteBoard = async () => {
+    setIsSavingNpoint(true);
+
+    const nextBoards = boards.filter((b) => b.id !== activeBoard.id);
+    setBoards(nextBoards);
+
+    if (nextBoards.length > 0) {
+      const nextActiveId = nextBoards[0].id;
+      setActiveBoardId(nextActiveId);
+      setBoardState({
+        initialInputValue: nextBoards[0].initialInputValue,
+        columns: nextBoards[0].columns,
+      });
+    } else {
+      setActiveBoardId('temp-board');
+      setBoardState({
+        initialInputValue: DEFAULT_INITIAL_BOARD.initialInputValue,
+        columns: DEFAULT_INITIAL_BOARD.columns,
+      });
+    }
+
+    if (storageMode === 'npoint') {
+      await saveBoardsToNpoint(binId, nextBoards);
+    } else {
+      saveLocalBoards(nextBoards);
+    }
+    setIsSavingNpoint(false);
+  };
+
+  // Handle Create New Board
+  const handleCreateNewBoard = async (name: string) => {
+    const newId = `board_${Date.now()}`;
+    const newBoard: Board = {
+      id: newId,
+      name,
+      updatedAt: new Date().toISOString(),
+      initialInputValue: "2026-07-30T23:30:00+02:00",
+      columns: DEFAULT_INITIAL_BOARD.columns,
+    };
+
+    const nextBoards = [...boards, newBoard];
+    setBoards(nextBoards);
+    setActiveBoardId(newId);
+    setBoardState({
+      initialInputValue: newBoard.initialInputValue,
+      columns: newBoard.columns,
+    });
+
+    if (storageMode === 'npoint') {
+      await saveBoardsToNpoint(binId, nextBoards);
+    } else {
+      saveLocalBoards(nextBoards);
+    }
+  };
 
   const initialInputValue = boardState.initialInputValue;
   const columns = boardState.columns;
@@ -90,7 +203,6 @@ export default function App() {
   };
 
   const [isEquivalenciesOpen, setIsEquivalenciesOpen] = useState(false);
-  const [showUtcRef, setShowUtcRef] = useState(false);
 
   // Device Timezone
   const deviceTimezone = useMemo(() => {
@@ -136,6 +248,61 @@ export default function App() {
     }));
   };
 
+  // Move or copy a conversion step within or between columns
+  const handleMoveStepBetweenColumns = (
+    sourceColId: string,
+    sourceIndex: number,
+    targetColId: string,
+    targetIndex: number,
+    isCopy: boolean
+  ) => {
+    setBoardState((prev) => {
+      const nextCols = { ...prev.columns };
+      const sourceSteps = [...(nextCols[sourceColId]?.steps || [])];
+
+      if (sourceColId === targetColId) {
+        if (sourceIndex >= 0 && sourceIndex < sourceSteps.length) {
+          const [moved] = sourceSteps.splice(sourceIndex, 1);
+          const insertIdx = targetIndex >= 0 ? Math.min(targetIndex, sourceSteps.length) : sourceSteps.length;
+          sourceSteps.splice(insertIdx, 0, moved);
+          nextCols[sourceColId] = {
+            ...nextCols[sourceColId],
+            steps: sourceSteps,
+          };
+        }
+        return { ...prev, columns: nextCols };
+      }
+
+      // Between different columns
+      if (sourceIndex < 0 || sourceIndex >= sourceSteps.length) return prev;
+
+      const sourceItem = sourceSteps[sourceIndex];
+      const targetSteps = [...(nextCols[targetColId]?.steps || [])];
+      const newStep: ColumnStep = {
+        id: `${targetColId}_${sourceItem.conversionId}_${Date.now()}`,
+        conversionId: sourceItem.conversionId,
+      };
+
+      const insertIdx = targetIndex >= 0 ? Math.min(targetIndex, targetSteps.length) : targetSteps.length;
+      targetSteps.splice(insertIdx, 0, newStep);
+
+      if (!isCopy) {
+        sourceSteps.splice(sourceIndex, 1);
+        nextCols[sourceColId] = {
+          ...nextCols[sourceColId],
+          steps: sourceSteps,
+        };
+      }
+
+      nextCols[targetColId] = {
+        ...nextCols[targetColId],
+        steps: targetSteps,
+      };
+
+      return { ...prev, columns: nextCols };
+    });
+  };
+
   // Add a single conversion chip to a column
   const handleAddConversionToColumn = (conversionId: string, targetColId?: string) => {
     const colId = targetColId || activeTargetColumnId || "ida_front_aso";
@@ -171,7 +338,7 @@ export default function App() {
       direction: "ida",
       value: currentStr,
       utcRef,
-      isDST: isDST(parsed.date, "Device"),
+      isDST: isDST(currentStr, "Device"),
       isValid: !!parsed.date,
     };
 
@@ -197,7 +364,7 @@ export default function App() {
       direction: "ida",
       value: currentStr,
       utcRef,
-      isDST: isDST(parsed.date, "Europe/Madrid"),
+      isDST: isDST(currentStr, "Europe/Madrid"),
       isValid: !!parsed.date,
     };
 
@@ -209,7 +376,7 @@ export default function App() {
       direction: "ida",
       value: currentStr,
       utcRef,
-      isDST: isDST(parsed.date, "Europe/Madrid"),
+      isDST: isDST(currentStr, "Europe/Madrid"),
       isValid: !!parsed.date,
     };
 
@@ -221,7 +388,7 @@ export default function App() {
       direction: "ida",
       value: currentStr,
       utcRef,
-      isDST: isDST(parsed.date, "Europe/Lisbon"),
+      isDST: isDST(currentStr, "Europe/Lisbon"),
       isValid: !!parsed.date,
     };
 
@@ -232,7 +399,7 @@ export default function App() {
       direction: "vuelta",
       value: hostSharedVal,
       utcRef,
-      isDST: isDST(parsed.date, "Europe/Lisbon"),
+      isDST: isDST(hostSharedVal, "Europe/Lisbon"),
       isValid: !!parsed.date,
     };
 
@@ -244,7 +411,7 @@ export default function App() {
       direction: "vuelta",
       value: currentStr,
       utcRef,
-      isDST: isDST(parsed.date, "Europe/Madrid"),
+      isDST: isDST(currentStr, "Europe/Madrid"),
       isValid: !!parsed.date,
     };
 
@@ -256,7 +423,7 @@ export default function App() {
       direction: "vuelta",
       value: currentStr,
       utcRef,
-      isDST: isDST(parsed.date, "Europe/Madrid"),
+      isDST: isDST(currentStr, "Europe/Madrid"),
       isValid: !!parsed.date,
     };
 
@@ -268,109 +435,58 @@ export default function App() {
       direction: "vuelta",
       value: currentStr,
       utcRef,
-      isDST: isDST(parsed.date, "Device"),
+      isDST: isDST(currentStr, "Device"),
       isValid: !!parsed.date,
     };
 
     return nodes;
   }, [initialInputValue, columns]);
 
-  const columnsListForDrawer = [
-    { id: "ida_front_aso", name: "Front → ASO" },
-    { id: "ida_aso_apx", name: "ASO → APX" },
-    { id: "ida_apx_host", name: "APX → HOST" },
-    { id: "vuelta_host_apx", name: "HOST → APX" },
-    { id: "vuelta_apx_aso", name: "APX → ASO" },
-    { id: "vuelta_aso_front", name: "ASO → Front" },
-  ];
-
   return (
     <div className="h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white overflow-hidden">
-      {/* Sleek Minimal Toolbar */}
-      <div className="w-full bg-slate-900/80 border-b border-slate-800/80 px-3 py-2 flex flex-wrap items-center justify-between gap-2 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Device Timezone Badge */}
-          <div className="flex items-center gap-1.5 bg-indigo-950/80 border border-indigo-700/60 rounded-lg px-3 py-1 text-sm font-semibold text-indigo-300 shadow-sm">
-            <Globe className="w-4 h-4 text-indigo-400 shrink-0" />
-            <span>{deviceTimezone}</span>
-          </div>
-
-          {/* Test Date Presets */}
-          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1">
-            <Calendar className="w-3.5 h-3.5 text-violet-400" />
-            <select
-              onChange={(e) => {
-                if (e.target.value) setInitialInputValue(e.target.value);
-              }}
-              className="bg-transparent text-xs text-slate-200 focus:outline-none max-w-[180px] truncate"
-              defaultValue=""
-            >
-              <option value="" disabled>
-                Fecha de prueba...
-              </option>
-              {INITIAL_PRESETS.map((p) => (
-                <option key={p.id} value={p.initialValue} className="bg-slate-900 text-slate-200">
-                  {p.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Clear Button */}
-          <button
-            onClick={handleClearAllColumns}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-rose-400 bg-slate-950 hover:bg-slate-800 border border-slate-800 px-2.5 py-1 rounded-lg transition"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Vaciar tablero
-          </button>
-
-          {/* Equivalencies Modal Button */}
-          <button
-            onClick={() => setIsEquivalenciesOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-indigo-300 hover:text-white bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/50 px-2.5 py-1 rounded-lg transition shadow-sm"
-          >
-            <Globe className="w-3.5 h-3.5 text-indigo-400" />
-            Equivalencias
-          </button>
-
-          {/* UTC Reference Toggle Button */}
-          <button
-            onClick={() => setShowUtcRef(!showUtcRef)}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg transition shadow-sm border ${
-              showUtcRef ?
-                "bg-indigo-900/90 text-indigo-200 border-indigo-600"
-              : "bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800"
-            }`}
-            title="Mostrar u ocultar la hora de referencia UTC en cada capa"
-          >
-            <Clock className="w-3.5 h-3.5 text-indigo-400" />
-            {showUtcRef ? "UTC Ref: Visible" : "UTC Ref: Oculto"}
-          </button>
-        </div>
-
-        {/* Catalog Button */}
-        <button
-          onClick={() => setIsCatalogOpen(!isCatalogOpen)}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg shadow transition"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          Catálogo
-        </button>
-      </div>
+      {/* Header with Board Selector & Quick Actions */}
+      <Header
+        activeBoardName={activeBoard.name}
+        boards={boards}
+        activeBoardId={activeBoardId}
+        storageMode={storageMode}
+        onToggleStorageMode={handleToggleStorageMode}
+        onSelectBoard={handleSelectBoard}
+        onRequestSaveBoard={() => {
+          setPinAction('save');
+          setPinModalOpen(true);
+        }}
+        onRequestDeleteBoard={() => {
+          setPinAction('delete');
+          setPinModalOpen(true);
+        }}
+        onRequestNewBoard={() => setNewBoardModalOpen(true)}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        isCatalogOpen={isCatalogOpen}
+        onToggleCatalog={() => setIsCatalogOpen(!isCatalogOpen)}
+        onOpenEquivalencies={() => setIsEquivalenciesOpen(true)}
+        isSavingNpoint={isSavingNpoint}
+      />
 
       {/* Main Container with flex row for inline side panel */}
       <div className="flex-1 flex w-full relative min-h-0 overflow-hidden">
         {/* Scrollable container for main content */}
         <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto flex flex-col">
-          <main className="min-w-[1650px] flex-1 px-2 sm:px-4 pt-2 pb-4 flex flex-col min-h-0">
+          <main className="w-full flex-1 px-3 sm:px-6 pt-2 pb-4 flex flex-col min-h-0">
             <CircuitBoard
               initialInputValue={initialInputValue}
               onInitialInputChange={setInitialInputValue}
               calculatedNodes={calculatedNodes}
               columns={columns}
               onUpdateColumnSteps={handleUpdateColumnSteps}
-              showUtcRef={showUtcRef}
+              onMoveStep={handleMoveStepBetweenColumns}
+              onOpenCatalog={(colId) => {
+                setActiveTargetColumnId(colId);
+                setIsCatalogOpen(true);
+              }}
             />
           </main>
         </div>
@@ -380,13 +496,38 @@ export default function App() {
       </div>
 
       {/* Fixed Summary Panel at Bottom */}
-      <SummaryPanel calculatedNodes={calculatedNodes} />
+      <SummaryPanel
+        calculatedNodes={calculatedNodes}
+      />
 
       {/* Equivalencies Modal */}
       <EquivalenciesModal
         isOpen={isEquivalenciesOpen}
         onClose={() => setIsEquivalenciesOpen(false)}
         defaultDateValue={initialInputValue}
+      />
+
+      {/* Confirmation Modal for Save / Delete */}
+      <PinConfirmationModal
+        isOpen={pinModalOpen}
+        actionType={pinAction}
+        boardName={activeBoard.name}
+        storageMode={storageMode}
+        onClose={() => setPinModalOpen(false)}
+        onConfirm={(customName) => {
+          if (pinAction === 'save') {
+            handleConfirmSaveBoard(customName);
+          } else {
+            handleConfirmDeleteBoard();
+          }
+        }}
+      />
+
+      {/* New Board Modal */}
+      <NewBoardModal
+        isOpen={newBoardModalOpen}
+        onClose={() => setNewBoardModalOpen(false)}
+        onCreate={handleCreateNewBoard}
       />
     </div>
   );

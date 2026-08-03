@@ -9,12 +9,41 @@ import {
   isDST,
   observesDST,
 } from '../utils/timezone';
-import { X, Globe, Clock, RefreshCw, Calendar, Copy, Check, ArrowUp } from 'lucide-react';
+import { X, Globe, RefreshCw, Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface EquivalenciesModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultDateValue: string;
+}
+
+function getReferenceYMD(inputValue: string, parsedDate: Date | null): string | null {
+  if (!parsedDate) return null;
+  const trimmed = inputValue.trim();
+  const ymdMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (ymdMatch) {
+    const [, y, m, d] = ymdMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  const dmyMatch = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  try {
+    return new Intl.DateTimeFormat('sv-SE').format(parsedDate);
+  } catch {
+    return null;
+  }
+}
+
+function getRegionYMD(date: Date, timeZone: string): string | null {
+  try {
+    const tz = timeZone === 'Device' ? undefined : timeZone;
+    return new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(date);
+  } catch {
+    return null;
+  }
 }
 
 export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
@@ -80,22 +109,9 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
         
         {/* Header */}
         <div className="p-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <Globe className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                Equivalencias Horarias Internacionales
-                <span className="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800/40 px-2 py-0.5 rounded-full font-mono">
-                  6 Regiones
-                </span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Visualiza la hora exacta simultánea en distintas regiones.
-              </p>
-            </div>
-          </div>
+          <h2 className="text-base font-bold text-slate-100">
+            Equivalencias Horarias Internacionales
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition"
@@ -127,7 +143,7 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
                 className="flex items-center justify-center gap-1 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-slate-700/80 px-2.5 h-[34px] rounded-lg transition shrink-0"
                 title="Cargar la fecha/hora del input principal del main"
               >
-                <ArrowUp className="w-3.5 h-3.5" />
+                <ArrowDown className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleCopyInputToClipboard}
@@ -163,6 +179,10 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
               const regionObservesDST = observesDST(region.timezone);
               const isSummer = regionObservesDST ? isDST(referenceDate, region.timezone) : false;
 
+              const refYMD = isValidDate ? getReferenceYMD(inputValue, referenceDate) : null;
+              const regionYMD = isValidDate ? getRegionYMD(referenceDate, region.timezone) : null;
+              const isDifferentDate = isValidDate && refYMD && regionYMD && refYMD !== regionYMD;
+
               return (
                 <div
                   key={region.timezone}
@@ -178,7 +198,7 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {regionObservesDST && (
+                      {regionObservesDST && isSummer !== null && (
                         <span
                           className="text-xs select-none"
                           title={isSummer ? "Horario de Verano (DST)" : "Horario Estándar"}
@@ -186,18 +206,18 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
                           {isSummer ? '☀️' : '❄️'}
                         </span>
                       )}
-                      <span className="text-[10px] font-mono font-semibold bg-slate-900 border border-slate-800 text-indigo-300 px-1.5 py-0.5 rounded">
+                      <span className="h-5 inline-flex items-center text-[10px] font-mono font-semibold bg-slate-900 border border-slate-800 text-indigo-300 px-1.5 rounded select-none">
                         {offsetStr}
                       </span>
                       <button
                         onClick={() => handleCopyRegionToInput(region.timezone)}
-                        className="text-[10px] font-mono font-semibold bg-slate-900 border border-slate-800 text-indigo-300 hover:text-white hover:bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer transition flex items-center justify-center"
+                        className="h-5 inline-flex items-center justify-center text-[10px] font-mono font-semibold bg-slate-900 border border-slate-800 text-indigo-300 hover:text-white hover:bg-slate-800 px-1.5 rounded cursor-pointer transition"
                         title="Pasar esta hora con huso a la hora de referencia"
                       >
                         {copiedRegionTz === region.timezone ? (
                           <Check className="w-3 h-3 text-emerald-400" />
                         ) : (
-                          <Copy className="w-3 h-3" />
+                          <ArrowUp className="w-3 h-3" />
                         )}
                       </button>
                     </div>
@@ -208,7 +228,12 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
                     <span className={`text-2xl font-bold font-mono tracking-tight ${isValidDate ? 'text-indigo-200' : 'text-slate-500'}`}>
                       {timeShortStr}
                     </span>
-                    <span className="text-xs font-mono font-medium text-slate-400">
+                    <span
+                      className={`text-xs font-mono font-medium ${
+                        isDifferentDate ? 'text-amber-300 font-bold' : 'text-slate-400'
+                      }`}
+                      title={isDifferentDate ? 'La fecha cambia respecto a la fecha de entrada' : undefined}
+                    >
                       {dayMonthStr}
                     </span>
                   </div>
@@ -235,3 +260,4 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
     </div>
   );
 };
+

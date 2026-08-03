@@ -1,7 +1,6 @@
 import {
   ConversionItem,
-  LayerInfo,
-  PresetScenario
+  LayerInfo
 } from '../types';
 import {
   parseFlexibleDate,
@@ -69,11 +68,77 @@ export const LAYERS: Record<string, LayerInfo> = {
   },
 };
 
+function formatSamePattern(input: string, dateObj: Date): string {
+  const trimmed = input.trim();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const yyyy = dateObj.getUTCFullYear();
+  const mm = pad(dateObj.getUTCMonth() + 1);
+  const dd = pad(dateObj.getUTCDate());
+  const hh = pad(dateObj.getUTCHours());
+  const min = pad(dateObj.getUTCMinutes());
+  const ss = pad(dateObj.getUTCSeconds());
+
+  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+    const hasSeconds = trimmed.split(':').length === 3;
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}${hasSeconds ? `:${ss}` : ''}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+    const hasSeconds = trimmed.split(':').length === 3;
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}${hasSeconds ? `:${ss}` : ''}`;
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+    const hasSeconds = trimmed.split(':').length === 3;
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}${hasSeconds ? `:${ss}` : ''}`;
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  if (trimmed.includes('T')) {
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
+  }
+  if (trimmed.includes(' ')) {
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+  }
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 /**
  * Extensive conversion catalog (array of objects with apply function)
  */
 export const CONVERSION_CATALOG: ConversionItem[] = [
   // --- ZONA HORARIA ---
+  {
+    id: 'tz_es_to_pt',
+    label: 'España ➔ Portugal (-1h)',
+    signature: 'Resta 1 hora (Conserva formato)',
+    category: 'timezone',
+    description: 'Convierte una fecha/hora de España a Portugal restando 1 hora y preservando la estructura del formato de entrada.',
+    apply: (input: string) => {
+      const parsed = parseFlexibleDate(input);
+      if (!parsed.date) return input;
+      if (parsed.hasTimezone && parsed.originalFormat === 'iso') {
+        return formatToTimezoneISO(parsed.date, 'Europe/Lisbon');
+      }
+      const dateObj = new Date(parsed.date.getTime() - 3600000);
+      return formatSamePattern(input, dateObj);
+    },
+  },
+  {
+    id: 'tz_pt_to_es',
+    label: 'Portugal ➔ España (+1h)',
+    signature: 'Suma 1 hora (Conserva formato)',
+    category: 'timezone',
+    description: 'Convierte una fecha/hora de Portugal a España sumando 1 hora y preservando la estructura del formato de entrada.',
+    apply: (input: string) => {
+      const parsed = parseFlexibleDate(input);
+      if (!parsed.date) return input;
+      if (parsed.hasTimezone && parsed.originalFormat === 'iso') {
+        return formatToTimezoneISO(parsed.date, 'Europe/Madrid');
+      }
+      const dateObj = new Date(parsed.date.getTime() + 3600000);
+      return formatSamePattern(input, dateObj);
+    },
+  },
   {
     id: 'tz_utc_to_es',
     label: 'Convertir a España',
@@ -164,10 +229,10 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
   },
   {
     id: 'time_add_midnight',
-    label: 'date-only ➔ 00:00:00',
-    signature: 'Añadir Medianoche (00:00:00)',
+    label: 'date-only ➔ ISO 8601 00:00:00',
+    signature: 'Añadir Medianoche ISO (T00:00:00)',
     category: 'time_presence',
-    description: 'Si la entrada es una fecha simple (YYYY-MM-DD), añade medianoche (00:00:00).',
+    description: 'Si la entrada es una fecha simple (YYYY-MM-DD), añade medianoche con T (T00:00:00).',
     apply: (input: string) => {
       const trimmed = input.trim();
       if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
@@ -181,6 +246,29 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       if (parsed.date) {
         const ymd = formatToTimezoneFormatted(parsed.date, 'Device', 'YYYY-MM-DD');
         return `${ymd}T00:00:00`;
+      }
+      return `${input}T00:00:00`;
+    },
+  },
+  {
+    id: 'time_add_space_midnight',
+    label: 'date-only ➔ date-time 00:00:00',
+    signature: 'Añadir Medianoche con espacio ( 00:00:00)',
+    category: 'time_presence',
+    description: 'Si la entrada es una fecha simple (YYYY-MM-DD), añade medianoche separada por espacio (YYYY-MM-DD 00:00:00).',
+    apply: (input: string) => {
+      const trimmed = input.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return `${trimmed} 00:00:00`;
+      }
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+        const [d, m, y] = trimmed.split('/');
+        return `${y}-${m}-${d} 00:00:00`;
+      }
+      const parsed = parseFlexibleDate(input);
+      if (parsed.date) {
+        const ymd = formatToTimezoneFormatted(parsed.date, 'Device', 'YYYY-MM-DD');
+        return `${ymd} 00:00:00`;
       }
       return `${input} 00:00:00`;
     },
@@ -295,53 +383,5 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       if (!parsed.date) return input;
       return formatToTimezoneFormatted(parsed.date, 'Europe/Madrid', 'YYYY-MM-DD HH:mm:ss');
     },
-  },
-];
-
-/**
- * Initial Preset Scenarios for input testing
- */
-export const INITIAL_PRESETS: PresetScenario[] = [
-  {
-    id: 'midnight_near',
-    title: 'Cerca de medianoche (23:30 España)',
-    description: '23:30 de un jueves en España (UTC+2 en verano). Propenso a cambiar de día en UTC o Portugal.',
-    initialValue: '2026-07-30T23:30:00+02:00',
-  },
-  {
-    id: 'dst_march',
-    title: 'Cambio de hora UE (Marzo - Verano)',
-    description: 'Noche de cambio a horario de verano (DST). Transición de UTC+1 a UTC+2 en España.',
-    initialValue: '2026-03-29T01:55:00+01:00',
-  },
-  {
-    id: 'dst_october',
-    title: 'Cambio de hora UE (Octubre - Invierno)',
-    description: 'Noche de cambio a horario de invierno. Transición de UTC+2 a UTC+1.',
-    initialValue: '2026-10-25T02:55:00+02:00',
-  },
-  {
-    id: 'hawaii',
-    title: 'Hawaii (UTC-10, Sin DST)',
-    description: 'Zona horaria alejada sin horario de verano.',
-    initialValue: '2026-07-30T14:30:00-10:00',
-  },
-  {
-    id: 'new_year',
-    title: 'Cambio de año (31 Dic 23:45)',
-    description: 'Fecha al límite del fin de año en España.',
-    initialValue: '2026-12-31T23:45:00+01:00',
-  },
-  {
-    id: 'date_only',
-    title: 'Solo fecha (2026-07-30)',
-    description: 'Fecha en formato YYYY-MM-DD sin hora.',
-    initialValue: '2026-07-30',
-  },
-  {
-    id: 'timestamp_epoch',
-    title: 'Timestamp Epoch (ms)',
-    description: 'Milisegundos Unix epoch.',
-    initialValue: '1785447000000',
   },
 ];

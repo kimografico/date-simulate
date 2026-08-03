@@ -28,9 +28,8 @@ El flujo se divide en:
 | `src/App.tsx` | **Estado Global y Layout Principal**: Mantiene la fecha inicial de prueba, el estado de las 6 columnas (`columns`), el modal de equivalencias y la zona horaria del dispositivo. |
 | `src/components/Header.tsx` | **Encabezado**: Muestra la zona horaria del dispositivo (`Intl.DateTimeFormat().resolvedOptions().timeZone`), el input para la fecha de prueba, botón de catálogo y botón "Vaciar tablero". |
 | `src/components/CircuitBoard.tsx` | **Tablero de Circuito**: Renderiza horizontalmente la secuencia de capas (Front, ASO, APX, HOST) y las columnas de conversión intermedias (Tanto en Ida como en Vuelta). |
-| `src/components/ConversionColumn.tsx` | **Columna de Conversión**: Muestra las transformaciones aplicadas secuencialmente entre dos capas en una dirección (Ida o Vuelta). Permite reordenar o eliminar chips. |
-| `src/components/LayerColumnCard.tsx` | **Tarjeta de Capa**: Renderiza el resultado acumulado en cada capa (valor procesado, UTC ref, indicador DST ☀️/❄️). |
-| `src/components/LayerNodeCard.tsx` | **Nodo de Capa Individual**: Estilo de cada tarjeta de nodo dentro del circuito. |
+| `src/components/SubColumnCard.tsx` | **Tarjeta de Subcolumna**: Muestra los chips de conversión aplicados en cada dirección de capa (Front, ASO, APX), la entrada/salida y estado de horario de verano. |
+| `src/components/HostColumnCard.tsx` | **Tarjeta de Columna HOST**: Renderiza el valor central guardado en la base de datos HOST con alertas de zona horaria si aplica. |
 | `src/components/SummaryPanel.tsx` | **Panel Inferior de Resumen**: Muestra la comparación del string en Front (Entrada), HOST (Guardado) y Front Vuelta (Resultado final), con badges de validación y botón de configuración de valores esperados. |
 | `src/components/CatalogDrawer.tsx` | **Cajón de Catálogo**: Drawer lateral para explorar y añadir conversiones clasificadas por categoría (`timezone`, `time_presence`, `representation`, `formatting`) a cualquier columna. |
 | `src/components/EquivalenciesModal.tsx` | **Modal de Equivalencias**: Muestra tabla explicativa de formatos y equivalencias de timezone. |

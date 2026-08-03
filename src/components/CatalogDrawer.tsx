@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CONVERSION_CATALOG } from '../data/conversions';
 import { ConversionItem } from '../types';
-import { SlidersHorizontal, X, Globe, Clock, FileCode, Server, Info } from 'lucide-react';
+import { SlidersHorizontal, Code, Globe, Clock, FileCode, Server, Info } from 'lucide-react';
 
 interface CatalogDrawerProps {
   isOpen: boolean;
@@ -10,9 +10,9 @@ interface CatalogDrawerProps {
 
 export const CatalogDrawer: React.FC<CatalogDrawerProps> = ({
   isOpen,
-  onClose,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showCode, setShowCode] = useState<boolean>(false);
   const [hoverTooltip, setHoverTooltip] = useState<{ item: ConversionItem; x: number; y: number } | null>(null);
 
   const formatFunctionCode = (fnStr: string) => {
@@ -41,8 +41,6 @@ export const CatalogDrawer: React.FC<CatalogDrawerProps> = ({
     return fnStr;
   };
 
-  if (!isOpen) return null;
-
   const categories: { id: string; label: string; icon: React.ReactNode }[] = [
     { id: 'all', label: 'Todas', icon: <SlidersHorizontal className="w-3 h-3" /> },
     { id: 'timezone', label: 'Zona Horaria', icon: <Globe className="w-3 h-3" /> },
@@ -51,9 +49,13 @@ export const CatalogDrawer: React.FC<CatalogDrawerProps> = ({
     { id: 'formatting', label: 'Formato Capa', icon: <Server className="w-3 h-3" /> },
   ];
 
-  const filteredCatalog = CONVERSION_CATALOG.filter((item) => {
-    return selectedCategory === 'all' || item.category === selectedCategory;
-  });
+  const filteredCatalog = useMemo(() => {
+    return CONVERSION_CATALOG.filter((item) => {
+      return selectedCategory === 'all' || item.category === selectedCategory;
+    });
+  }, [selectedCategory]);
+
+  if (!isOpen) return null;
 
   const handleDragStart = (e: React.DragEvent, conversionId: string) => {
     e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'catalog', conversionId }));
@@ -75,12 +77,19 @@ export const CatalogDrawer: React.FC<CatalogDrawerProps> = ({
             <p className="text-[10px] text-slate-400">Arrastra los chips a la columna deseada</p>
           </div>
         </div>
+
+        {/* Code Toggle Button */}
         <button
-          onClick={onClose}
-          className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition"
-          title="Cerrar catálogo"
+          onClick={() => setShowCode(!showCode)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition shadow-sm border ${
+            showCode
+              ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-900/50'
+              : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'
+          }`}
+          title="Ver u ocultar la función JavaScript apply en los tooltips al pasar el ratón"
         >
-          <X className="w-4 h-4" />
+          <Code className="w-3.5 h-3.5" />
+          Code
         </button>
       </div>
 
@@ -178,14 +187,16 @@ export const CatalogDrawer: React.FC<CatalogDrawerProps> = ({
           <p className="text-[11px] text-slate-300 leading-tight">
             {hoverTooltip.item.description}
           </p>
-          <div className="mt-0.5">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 font-mono">
-              Función (apply):
-            </span>
-            <pre className="font-mono text-[10.5px] text-emerald-300 bg-slate-900/90 p-2 rounded-lg border border-slate-800/90 whitespace-pre-wrap break-all leading-snug max-h-44 overflow-y-auto">
-              {formatFunctionCode(hoverTooltip.item.apply.toString())}
-            </pre>
-          </div>
+          {showCode && (
+            <div className="mt-0.5">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1 font-mono">
+                Función (apply):
+              </span>
+              <pre className="font-mono text-[10.5px] text-emerald-300 bg-slate-900/90 p-2 rounded-lg border border-slate-800/90 whitespace-pre-wrap break-all leading-snug max-h-44 overflow-y-auto">
+                {formatFunctionCode(hoverTooltip.item.apply.toString())}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </aside>

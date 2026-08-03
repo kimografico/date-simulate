@@ -46,13 +46,6 @@ export interface ColumnConfig {
   steps: ColumnStep[];
 }
 
-export interface PresetScenario {
-  id: string;
-  title: string;
-  description: string;
-  initialValue: string;
-}
-
 export interface CalculatedNode {
   layerId: LayerId;
   direction: FlowDirection;
@@ -61,4 +54,12 @@ export interface CalculatedNode {
   isDST: boolean | null; // true for summer ☀️, false for winter ❄️, null if unparseable
   isValid: boolean;
   notes?: string;
+}
+
+export interface Board {
+  id: string;
+  name: string;
+  updatedAt: string;
+  initialInputValue: string;
+  columns: Record<string, ColumnConfig>;
 }

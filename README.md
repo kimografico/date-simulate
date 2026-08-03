@@ -52,16 +52,22 @@ El tablero de circuito (*Circuit Board*) muestra 7 columnas organizadas horizont
 
 ## ⚙️ Funcionalidades Clave
 
-### 1. Detección Automática de Zona Horaria del Dispositivo
+### 1. Gestión de Múltiples Tableros y Persistencia (Local / npoint.io)
+- **Desplegable de Tableros**: Permite crear nuevos tableros (`+ NUEVO`), alternar entre ellos y guardarlos con nombres personalizados.
+- **Sostenibilidad Dual**: Selector ovalado en el encabezado para guardar los tableros localmente (`localStorage`) o de forma remota en la nube mediante bins de `npoint.io`.
+- **Modal de Seguridad PIN**: Confirmación de acciones críticas (guardado y eliminación) con código PIN predeterminado (`1234`).
+- **Botones Unificados**: Botones de Guardar y Borrar agrupados sin separación interna en la barra superior.
+
+### 2. Historial de Cambios (Undo / Redo)
+- Soporte para deshacer y rehacer transformaciones de pasos de manera fluida a través de botones dedicados en el encabezado o mediante atajos de teclado (`Ctrl+Z`, `Ctrl+Y`, `Cmd+Shift+Z`).
+
+### 3. Detección Automática de Zona Horaria del Dispositivo
 Muestra en el encabezado y en el panel la zona horaria real del navegador cliente (vía `Intl.DateTimeFormat().resolvedOptions().timeZone`), adaptando dinámicamente las conversiones relativas al dispositivo.
 
-### 2. Entrada de Prueba Libre y Accesos Rápidos
-Permite ingresar cualquier cadena de fecha o seleccionar presets de prueba con un solo clic:
-- `Fecha/hora con offset ISO` (ej. `2026-07-30T23:30:00+02:00`)
-- `Solo fecha YYYY-MM-DD` (ej. `2026-07-30`)
-- `Timestamp Epoch Unix en milisegundos` (ej. `1785447000000`)
+### 4. Entrada de Prueba Libre
+Permite ingresar cualquier cadena de fecha personalizada o seleccionar valores de prueba rápidamente desde la barra superior.
 
-### 3. Catálogo Interactivo de Conversiones (Drag & Drop)
+### 5. Catálogo Interactivo de Conversiones (Drag & Drop)
 Un cajón lateral desplegable con más de 20 conversiones clasificadas en 4 categorías:
 - 🌐 **Zona Horaria**: Conversiones explícitas entre UTC, España (`Europe/Madrid`), Portugal (`Europe/Lisbon`) y Dispositivo Local.
 - 🕒 **Presencia de Hora**: Quitar componente de hora (date-only), forzar medianoche (`00:00:00`), truncado.
@@ -70,10 +76,10 @@ Un cajón lateral desplegable con más de 20 conversiones clasificadas en 4 cate
 
 Cada elemento del catálogo incluye una vista previa con tooltip flotante que muestra la descripción técnica y la implementación exacta de la función de transformación (`apply`).
 
-### 4. Detección de Errores y Alertas de HOST (⚠️)
+### 6. Detección de Errores y Alertas de HOST (⚠️)
 Si el valor resultante al llegar a la capa **HOST** contiene indicadores explícitos de zona horaria (`Z`, `UTC`, `GMT`, o diferencias como `+02:00`), el simulador resalta la tarjeta en rojo y muestra un mensaje de advertencia explicando que HOST no puede almacenar offsets.
 
-### 5. Resumen Inferior y Validador de Resultados Esperados
+### 7. Resumen Inferior y Validador de Resultados Esperados
 Un panel inferior flotante que compara de un vistazo los tres hitos del flujo:
 1. **Input Front**: Cadena original enviada.
 2. **HOST**: Cadena efectivamente almacenada en la base de datos.
@@ -81,7 +87,7 @@ Un panel inferior flotante que compara de un vistazo los tres hitos del flujo:
 
 Incluye un botón de **Configurar** para ingresar los valores esperados de HOST y Vuelta, validando visualmente mediante contornos verdes (coincidencia exitosa) o rojos (desviación).
 
-### 6. Modal de Equivalencias Horarias Internacionales
+### 8. Modal de Equivalencias Horarias Internacionales
 Permite comparar de forma simultánea e instantánea cómo se traduce la fecha de referencia en 6 regiones globales (España, Portugal, Hawaii, Kiribati, Isla Baker UTC-12 y Sydney), con indicadores de Horario de Verano (☀️ Verano / ❄️ Invierno) y botones para copiar o sincronizar la fecha actual.
 
 ---
@@ -96,12 +102,12 @@ Permite comparar de forma simultánea e instantánea cómo se traduce la fecha d
 - **Iconografía**: `lucide-react`.
 
 ### Arquitectura de Código y Principios SOLID
-- **S - Single Responsibility**: Cada componente realiza una única tarea visual o de interacción (`SummaryPanel`, `CatalogDrawer`, `ConversionColumn`, `LayerColumnCard`, `EquivalenciesModal`).
+- **S - Single Responsibility**: Cada componente realiza una única tarea visual o de interacción (`Header`, `CircuitBoard`, `SubColumnCard`, `HostColumnCard`, `SummaryPanel`, `CatalogDrawer`, `EquivalenciesModal`, `NewBoardModal`, `PinConfirmationModal`).
 - **O - Open/Closed**: El catálogo de conversiones (`CONVERSION_CATALOG`) es fácilmente extensible añadiendo nuevos objetos `ConversionItem` sin modificar la lógica de renderizado del tablero.
 - **L / I - Interface Segregation**: Tipos e interfaces globales consolidados en `src/types.ts`.
 - **D - Dependency Inversion & Pure Functions**: Las transformaciones de fecha en `src/utils/timezone.ts` y las funciones `apply` de las conversiones son funciones puras sin efectos secundarios sobre el DOM ni el estado global.
 
-### Parseo Seguro e Tolerancia a Fallos
+### Parseo Seguro y Tolerancia a Fallos
 El helper `parseFlexibleDate()` en `src/utils/timezone.ts` es capaz de interpretar múltiples formatos de entrada (ISO 8601, fecha sin hora, hora en espacio o T, timestamps epoch de 10 o 13 dígitos, y formatos europeos `DD/MM/YYYY`). En caso de recibir una cadena malformada, la canalización retorna el string sin lanzar excepciones para evitar cuelgues en la interfaz.
 
 ### Documentación de Mantenibilidad en la Raíz

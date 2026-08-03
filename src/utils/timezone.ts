@@ -101,7 +101,7 @@ export function getFormattedOffset(date: Date, timeZone: string): string {
 }
 
 /**
- * Flexibility parse date strings (ISO, YYYY-MM-DD, epoch, etc.)
+ * Flexibility parse date strings (ISO, YYYY-MM-DD, European DD/MM/YYYY HH:mm, epoch, etc.)
  */
 export function parseFlexibleDate(str: string): ParsedDateResult {
   const trimmed = str.trim();
@@ -119,31 +119,78 @@ export function parseFlexibleDate(str: string): ParsedDateResult {
     }
   }
 
-  // 2. Date-only (YYYY-MM-DD or YYYY/MM/DD)
-  const dateOnlyMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-  if (dateOnlyMatch) {
-    const [, y, m, d] = dateOnlyMatch;
-    // Interpret as local UTC date for consistency when date-only
-    const dateObj = new Date(Date.UTC(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 0, 0, 0));
-    return { date: dateObj, rawString: str, hasTime: false, hasTimezone: false, originalFormat: 'date-only' };
+  // 2. Spanish/European format: DD/MM/YYYY or DD/MM/YYYY HH:mm or DD/MM/YYYY HH:mm:ss (or with - or .)
+  const europeanMatch = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*(Z|[+-]\d{2}:?\d{2})?$/i);
+  if (europeanMatch) {
+    const [, dStr, mStr, yStr, hhStr, mmStr, ssStr, tzStr] = europeanMatch;
+    const day = parseInt(dStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const year = parseInt(yStr, 10);
+    const hasTime = hhStr !== undefined;
+    const hours = hasTime ? parseInt(hhStr, 10) : 0;
+    const minutes = hasTime ? parseInt(mmStr, 10) : 0;
+    const seconds = ssStr !== undefined ? parseInt(ssStr, 10) : 0;
+    const hasTimezone = Boolean(tzStr);
+
+    let dateObj: Date;
+    if (hasTimezone && tzStr) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const isoStr = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}${tzStr}`;
+      dateObj = new Date(isoStr);
+    } else {
+      dateObj = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
+    }
+
+    if (!isNaN(dateObj.getTime())) {
+      return {
+        date: dateObj,
+        rawString: str,
+        hasTime,
+        hasTimezone,
+        originalFormat: hasTimezone ? 'iso' : (hasTime ? 'datetime-space' : 'date-only')
+      };
+    }
   }
 
-  // 3. DD/MM/YYYY or DD-MM-YYYY
-  const dateOnlySpanishMatch = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
-  if (dateOnlySpanishMatch) {
-    const [, d, m, y] = dateOnlySpanishMatch;
-    const dateObj = new Date(Date.UTC(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 0, 0, 0));
-    return { date: dateObj, rawString: str, hasTime: false, hasTimezone: false, originalFormat: 'date-only' };
+  // 3. ISO / YYYY-MM-DD format (YYYY-MM-DD or YYYY-MM-DD HH:mm or YYYY-MM-DDTHH:mm:ss+02:00 etc)
+  const isoLikeMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*(Z|[+-]\d{2}:?\d{2})?$/i);
+  if (isoLikeMatch) {
+    const [, yStr, mStr, dStr, hhStr, mmStr, ssStr, tzStr] = isoLikeMatch;
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const day = parseInt(dStr, 10);
+    const hasTime = hhStr !== undefined;
+    const hours = hasTime ? parseInt(hhStr, 10) : 0;
+    const minutes = hasTime ? parseInt(mmStr, 10) : 0;
+    const seconds = ssStr !== undefined ? parseInt(ssStr, 10) : 0;
+    const hasTimezone = Boolean(tzStr);
+
+    let dateObj: Date;
+    if (hasTimezone && tzStr) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const isoStr = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}${tzStr}`;
+      dateObj = new Date(isoStr);
+    } else {
+      dateObj = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
+    }
+
+    if (!isNaN(dateObj.getTime())) {
+      return {
+        date: dateObj,
+        rawString: str,
+        hasTime,
+        hasTimezone,
+        originalFormat: hasTimezone ? 'iso' : (hasTime ? 'datetime-space' : 'date-only')
+      };
+    }
   }
 
-  // 4. ISO or standard JS date parse
+  // 4. Fallback standard Date parsing
   const hasTime = /[T\s]\d{1,2}:\d{2}/.test(trimmed);
   const hasTimezone = /Z|[+-]\d{2}:?\d{2}$/.test(trimmed);
   
-  // Try standard Date parsing
   let parsed = new Date(trimmed);
   if (isNaN(parsed.getTime()) && trimmed.includes(' ')) {
-    // try replacing space with T for ISO compatibility
     parsed = new Date(trimmed.replace(' ', 'T'));
   }
 
@@ -203,10 +250,24 @@ export function getTimezoneOffsetMinutes(date: Date, timeZone: string): number {
 }
 
 /**
- * Determine if a given date is in Daylight Saving Time (☀️ Verano) or Standard Time (❄️ Invierno)
+ * Determine if a given date string or Date is in Daylight Saving Time (☀️ Verano) or Standard Time (❄️ Invierno).
+ * Returns null if the value does not contain explicit timezone information (e.g. plain date/time string).
  */
-export function isDST(date: Date | null, timeZone: string = 'Europe/Madrid'): boolean {
-  if (!date || isNaN(date.getTime())) return false;
+export function isDST(val: string | Date | null, timeZone: string = 'Europe/Madrid'): boolean | null {
+  if (!val) return null;
+
+  let date: Date | null = null;
+  if (typeof val === 'string') {
+    const parsed = parseFlexibleDate(val);
+    if (!parsed.date || isNaN(parsed.date.getTime()) || !parsed.hasTimezone) {
+      return null;
+    }
+    date = parsed.date;
+  } else {
+    date = val;
+  }
+
+  if (!date || isNaN(date.getTime())) return null;
 
   const resolvedTz = timeZone === 'Device' 
     ? Intl.DateTimeFormat().resolvedOptions().timeZone 
@@ -232,7 +293,6 @@ export function isDST(date: Date | null, timeZone: string = 'Europe/Madrid'): bo
 
   // If Jan and Jul offsets are identical, timezone has no DST (e.g. Hawaii or UTC)
   if (janOffset === julOffset) {
-    // For UTC or non-DST zones, check month for seasonal indicator (April - Oct)
     const month = date.getUTCMonth();
     return month >= 3 && month <= 9;
   }

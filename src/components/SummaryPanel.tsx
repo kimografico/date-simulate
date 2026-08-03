@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { CalculatedNode } from '../types';
-import { Laptop, Database, Settings, X } from 'lucide-react';
+import { Smartphone, Database, Settings, X } from 'lucide-react';
 import { hasHostTimezoneViolation } from '../utils/timezone';
 
 interface SummaryPanelProps {
   calculatedNodes: Record<string, CalculatedNode>;
 }
 
-export const SummaryPanel: React.FC<SummaryPanelProps> = ({ calculatedNodes }) => {
+export const SummaryPanel: React.FC<SummaryPanelProps> = ({
+  calculatedNodes,
+}) => {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   // Expected values for validation
@@ -56,55 +58,57 @@ export const SummaryPanel: React.FC<SummaryPanelProps> = ({ calculatedNodes }) =
     <>
       <div className="shrink-0 w-full z-20 bg-slate-900/95 border-t border-slate-800 backdrop-blur-md shadow-2xl">
         <div className="w-full px-3 sm:px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Left: UTC Ref & Config button equalized in height */}
+          {/* Left: ENTRADA Reference Badge */}
           <div className="flex items-center gap-2 shrink-0">
-            <span className="h-7 px-2.5 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 rounded-md flex items-center justify-center whitespace-nowrap shrink-0">
-              UTC: {utcRef || 'N/A'}
+            <span className="h-8 px-2.5 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 rounded-md flex items-center justify-center whitespace-nowrap shrink-0">
+              ENTRADA: {utcRef || 'N/A'}
             </span>
-
-            {/* Configuration Button */}
-            <button
-              onClick={() => setIsConfigOpen(true)}
-              className="h-7 px-2.5 text-xs font-medium text-indigo-300 hover:text-white bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 rounded-md flex items-center gap-1.5 transition shadow-sm shrink-0"
-              title="Configurar valores esperados para validar HOST y Front Vuelta"
-            >
-              <Settings className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Configurar</span>
-            </button>
           </div>
 
-          {/* Right: Grid with 3 wider color blocks for full date & time with timezone */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 w-full max-w-6xl">
-            {/* 1. Input Front */}
-            <div className="bg-slate-950/90 outline outline-1 outline-slate-800 rounded-lg py-2.5 px-3.5 flex items-center justify-between gap-3 transition-all min-h-[46px] min-w-0">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
-                <Laptop className="w-3.5 h-3.5 text-slate-400" />
-                1. Front:
-              </span>
-              <div className="text-xs sm:text-sm font-mono text-slate-100 font-semibold text-right truncate">
-                {frontInput || '(vacío)'}
-              </div>
-            </div>
+          {/* Right: Configurar Button (Square) + 3 summary blocks */}
+          <div className="flex items-center gap-3 flex-1 w-full max-w-7xl min-w-0">
+            {/* Configurar Button (Icon-only square) */}
+            <button
+              onClick={() => setIsConfigOpen(true)}
+              className="w-[46px] h-[46px] shrink-0 bg-slate-950/90 outline outline-1 outline-slate-800 hover:outline-indigo-500/50 hover:bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-white transition-all shadow-sm"
+              title="Configurar valores esperados para validar HOST y Front Vuelta"
+            >
+              <Settings className="w-5 h-5 text-indigo-400" />
+            </button>
 
-            {/* 2. Stored HOST */}
-            <div className={`bg-slate-950/90 rounded-lg py-2.5 px-3.5 flex items-center justify-between gap-3 transition-all min-h-[46px] min-w-0 ${hostOutlineClass}`}>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
-                <Database className="w-3.5 h-3.5 text-slate-400" />
-                2. HOST:
-              </span>
-              <div className="text-xs sm:text-sm font-mono text-slate-100 font-semibold text-right truncate">
-                {hostStored || '(vacío)'}
+            {/* 3 Summary Blocks */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 min-w-0">
+              {/* 1. Input Front */}
+              <div className="bg-slate-950/90 outline outline-1 outline-slate-800 rounded-lg py-2.5 px-3.5 flex items-center justify-between gap-3 transition-all min-h-[46px] min-w-0">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                  <Smartphone className="w-3.5 h-3.5 text-slate-400" />
+                  1. Front:
+                </span>
+                <div className="text-xs sm:text-sm font-mono text-slate-100 font-semibold text-right truncate">
+                  {frontInput || '(vacío)'}
+                </div>
               </div>
-            </div>
 
-            {/* 3. Output Front */}
-            <div className={`bg-slate-950/90 rounded-lg py-2.5 px-3.5 flex items-center justify-between gap-3 transition-all min-h-[46px] min-w-0 ${frontOutlineClass}`}>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
-                <Laptop className="w-3.5 h-3.5 text-slate-400" />
-                3. Vuelta:
-              </span>
-              <div className="text-xs sm:text-sm font-mono text-slate-100 font-semibold text-right truncate">
-                {frontOutput || '(vacío)'}
+              {/* 2. Stored HOST */}
+              <div className={`bg-slate-950/90 rounded-lg py-2.5 px-3.5 flex items-center justify-between gap-3 transition-all min-h-[46px] min-w-0 ${hostOutlineClass}`}>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                  <Database className="w-3.5 h-3.5 text-slate-400" />
+                  2. HOST:
+                </span>
+                <div className="text-xs sm:text-sm font-mono text-slate-100 font-semibold text-right truncate">
+                  {hostStored || '(vacío)'}
+                </div>
+              </div>
+
+              {/* 3. Output Front Vuelta */}
+              <div className={`bg-slate-950/90 rounded-lg py-2.5 px-3.5 flex items-center justify-between gap-3 transition-all min-h-[46px] min-w-0 ${frontOutlineClass}`}>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                  <Smartphone className="w-3.5 h-3.5 text-slate-400" />
+                  3. Vuelta a Front:
+                </span>
+                <div className="text-xs sm:text-sm font-mono text-slate-100 font-semibold text-right truncate">
+                  {frontOutput || '(vacío)'}
+                </div>
               </div>
             </div>
           </div>
