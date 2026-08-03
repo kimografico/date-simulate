@@ -187,7 +187,7 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
 
       {/* SECCIÓN 3: ZONA DE CONVERSIONES */}
       <div
-        className="flex-1 flex flex-col my-1 min-h-[50px] cursor-pointer"
+        className="flex-1 flex flex-col my-1 min-h-[50px]"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('.conversion-chip')) return;
           onOpenCatalog(columnConfig.id);

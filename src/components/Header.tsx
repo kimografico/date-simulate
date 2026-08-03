@@ -6,8 +6,8 @@ interface HeaderProps {
   activeBoardName: string;
   boards: Board[];
   activeBoardId: string;
-  storageMode: 'local' | 'npoint';
-  onToggleStorageMode: (mode: 'local' | 'npoint') => void;
+  storageMode: "local" | "npoint";
+  onToggleStorageMode: (mode: "local" | "npoint") => void;
   onSelectBoard: (boardId: string) => void;
   onRequestSaveBoard: () => void;
   onRequestDeleteBoard: () => void;
@@ -55,7 +55,11 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="w-full mx-auto flex items-center justify-between gap-3">
         {/* Left: Board Name in Large Text */}
         <div className="flex items-center min-w-0 pr-2">
-          <h1 className="text-lg sm:text-2xl font-bold text-slate-100 tracking-tight truncate" title={activeBoardName}>
+          <h1
+            className="text-lg sm:text-3xl font-bold text-slate-100 tracking-tight truncate"
+            style={{ fontFamily: "'Source Serif 4', serif" }}
+            title={activeBoardName}
+          >
             {activeBoardName}
           </h1>
         </div>
@@ -65,23 +69,27 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Storage Mode Oval Switch Toggle (Left of Dropdown) */}
           <button
             type="button"
-            onClick={() => onToggleStorageMode(storageMode === 'local' ? 'npoint' : 'local')}
+            onClick={() => onToggleStorageMode(storageMode === "local" ? "npoint" : "local")}
             className="flex items-center gap-2 p-0 cursor-pointer focus:outline-none group"
-            title={storageMode === 'local' ? 'Almacenamiento Local (localStorage)' : 'Almacenamiento Remoto (npoint.io)'}
+            title={
+              storageMode === "local" ?
+                "Almacenamiento Local (localStorage)"
+              : "Almacenamiento Remoto (npoint.io)"
+            }
           >
             <div
               className={`w-8 h-4.5 sm:w-9 sm:h-5 flex items-center rounded-full p-0.5 transition-colors duration-200 ${
-                storageMode === 'npoint' ? 'bg-indigo-600' : 'bg-slate-700'
+                storageMode === "npoint" ? "bg-indigo-600" : "bg-slate-700"
               }`}
             >
               <div
                 className={`bg-white w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                  storageMode === 'npoint' ? 'translate-x-3.5 sm:translate-x-4' : 'translate-x-0'
+                  storageMode === "npoint" ? "translate-x-3.5 sm:translate-x-4" : "translate-x-0"
                 }`}
               />
             </div>
             <span className="text-xs font-semibold text-slate-200 select-none text-left min-w-[52px]">
-              {storageMode === 'local' ? 'Local' : 'npoint.io'}
+              {storageMode === "local" ? "Local" : "npoint.io"}
             </span>
           </button>
 
@@ -117,11 +125,15 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onRequestDeleteBoard}
               disabled={boards.length === 0}
-              title={boards.length === 0 ? "No hay tableros guardados para eliminar" : "Eliminar tablero actual"}
+              title={
+                boards.length === 0 ?
+                  "No hay tableros guardados para eliminar"
+                : "Eliminar tablero actual"
+              }
               className={`p-2.5 rounded-r-lg rounded-l-none border border-l-0 transition flex items-center justify-center ${
-                boards.length === 0
-                  ? "bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed opacity-50"
-                  : "bg-rose-950/80 border-rose-800/80 text-rose-400 hover:bg-rose-900 hover:text-rose-200 cursor-pointer"
+                boards.length === 0 ?
+                  "bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed opacity-50"
+                : "bg-rose-950/80 border-rose-800/80 text-rose-400 hover:bg-rose-900 hover:text-rose-200 cursor-pointer"
               }`}
             >
               <Trash2 className="w-4 h-4" />
@@ -135,9 +147,9 @@ export const Header: React.FC<HeaderProps> = ({
               disabled={!canUndo}
               title="Deshacer (Ctrl+Z)"
               className={`p-2 rounded-md flex items-center justify-center transition ${
-                canUndo
-                  ? "text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer"
-                  : "text-slate-600 cursor-not-allowed opacity-40"
+                canUndo ?
+                  "text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer"
+                : "text-slate-600 cursor-not-allowed opacity-40"
               }`}
             >
               <Undo2 className="w-4 h-4" />
@@ -148,9 +160,9 @@ export const Header: React.FC<HeaderProps> = ({
               disabled={!canRedo}
               title="Rehacer (Ctrl+Y / Cmd+Shift+Z)"
               className={`p-2 rounded-md flex items-center justify-center transition ${
-                canRedo
-                  ? "text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer"
-                  : "text-slate-600 cursor-not-allowed opacity-40"
+                canRedo ?
+                  "text-slate-200 hover:text-white hover:bg-slate-800 cursor-pointer"
+                : "text-slate-600 cursor-not-allowed opacity-40"
               }`}
             >
               <Redo2 className="w-4 h-4" />
@@ -170,9 +182,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onToggleCatalog}
             className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-              isCatalogOpen
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400"
-                : "bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700"
+              isCatalogOpen ?
+                "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400"
+              : "bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700"
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
@@ -183,4 +195,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-
