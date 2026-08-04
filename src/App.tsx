@@ -26,7 +26,10 @@ interface BoardSnapshot {
 
 export default function App() {
   const [storageMode, setStorageMode] = useState<'local' | 'npoint'>('local');
-  const [boards, setBoards] = useState<Board[]>(() => getLocalBoards());
+  const [boards, setBoards] = useState<Board[]>(() => {
+    const local = getLocalBoards();
+    return local.length > 0 ? local : [DEFAULT_INITIAL_BOARD];
+  });
   const [activeBoardId, setActiveBoardId] = useState<string>(() => boards[0]?.id || DEFAULT_INITIAL_BOARD.id);
   const [binId] = useState<string>(() => getStoredBinId());
   const [isSavingNpoint, setIsSavingNpoint] = useState(false);
@@ -84,6 +87,12 @@ export default function App() {
         setBoardState({
           initialInputValue: localBs[0].initialInputValue,
           columns: localBs[0].columns,
+        });
+      } else {
+        setActiveBoardId('temp-board');
+        setBoardState({
+          initialInputValue: DEFAULT_INITIAL_BOARD.initialInputValue,
+          columns: DEFAULT_INITIAL_BOARD.columns,
         });
       }
     }

@@ -95,14 +95,14 @@ export function getLocalBoards(): Board[] {
     const raw = localStorage.getItem(STORAGE_BOARDS_KEY);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
     }
   } catch (e) {
     console.warn('Could not read local boards from localStorage:', e);
   }
-  return [DEFAULT_INITIAL_BOARD];
+  return [];
 }
 
 export function saveLocalBoards(boards: Board[]): void {
