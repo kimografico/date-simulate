@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { CalculatedNode } from '../types';
-import { Smartphone, Database, Settings, X } from 'lucide-react';
+import { Smartphone, Database, Settings, X, HelpCircle } from 'lucide-react';
 import { hasHostTimezoneViolation } from '../utils/timezone';
+import { HelpModal } from './HelpModal';
 
 interface SummaryPanelProps {
   calculatedNodes: Record<string, CalculatedNode>;
@@ -11,6 +12,7 @@ export const SummaryPanel: React.FC<SummaryPanelProps> = ({
   calculatedNodes,
 }) => {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Expected values for validation
   const [expectedHost, setExpectedHost] = useState<string>('');
@@ -60,6 +62,13 @@ export const SummaryPanel: React.FC<SummaryPanelProps> = ({
         <div className="w-full px-3 sm:px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Left: ENTRADA Reference Badge */}
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsHelpOpen(true)}
+              className="w-8 h-8 shrink-0 bg-slate-950/90 outline outline-1 outline-slate-800 hover:outline-indigo-500/50 hover:bg-slate-900 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-all shadow-sm"
+              title="Ayuda"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
             <span className="h-8 px-2.5 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 rounded-md flex items-center justify-center whitespace-nowrap shrink-0">
               ENTRADA: {utcRef || 'N/A'}
             </span>
@@ -191,6 +200,8 @@ export const SummaryPanel: React.FC<SummaryPanelProps> = ({
           </div>
         </div>
       )}
+      {/* Help Modal */}
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </>
   );
 };
