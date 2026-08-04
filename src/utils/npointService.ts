@@ -133,7 +133,6 @@ export async function fetchBoardsFromNpoint(binId: string): Promise<{ boards: Bo
     }
 
     if (boardsArray.length > 0) {
-      saveLocalBoards(boardsArray);
       return { boards: boardsArray, fromNpoint: true };
     }
   } catch (err) {
