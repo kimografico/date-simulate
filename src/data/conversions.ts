@@ -151,6 +151,12 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       if (!parsed.date) return input;
       return formatToTimezoneISO(parsed.date, "Europe/Madrid");
     },
+    warningCheck: (parsed) => {
+      if (!parsed.hasTimezone) {
+        return "La entrada no tiene zona horaria. Se interpretará como UTC y se convertirá a Europe/Madrid. El resultado puede ser incorrecto si la entrada era hora local.";
+      }
+      return null;
+    },
   },
   {
     id: "tz_utc_to_pt",
@@ -164,6 +170,12 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       if (!parsed.date) return input;
       return formatToTimezoneISO(parsed.date, "Europe/Lisbon");
     },
+    warningCheck: (parsed) => {
+      if (!parsed.hasTimezone) {
+        return "La entrada no tiene zona horaria. Se interpretará como UTC y se convertirá a Europe/Lisbon. El resultado puede ser incorrecto si la entrada era hora local.";
+      }
+      return null;
+    },
   },
   {
     id: "tz_utc_to_dev",
@@ -175,6 +187,12 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       const parsed = parseFlexibleDate(input);
       if (!parsed.date) return input;
       return formatToTimezoneISO(parsed.date, "Device");
+    },
+    warningCheck: (parsed) => {
+      if (!parsed.hasTimezone) {
+        return "La entrada no tiene zona horaria. Se interpretará como UTC y se convertirá a la zona del dispositivo. El resultado puede ser incorrecto si la entrada era hora local.";
+      }
+      return null;
     },
   },
   {
@@ -316,6 +334,12 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       if (!parsed.date) return input;
       return parsed.date.toISOString();
     },
+    warningCheck: (parsed) => {
+      if (!parsed.hasTimezone) {
+        return "La entrada no tiene zona horaria. El sufijo Z (UTC) se añadirá basándose en una interpretación UTC que puede ser incorrecta.";
+      }
+      return null;
+    },
   },
   {
     id: "fmt_space",
@@ -352,6 +376,12 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       if (!parsed.date) return input;
       return String(parsed.date.getTime());
     },
+    warningCheck: (parsed) => {
+      if (!parsed.hasTimezone) {
+        return "La entrada no tiene zona horaria. El timestamp se calculará asumiendo UTC, lo que puede ser incorrecto si la entrada era hora local.";
+      }
+      return null;
+    },
   },
 
   // --- OTRAS CONVERSIONES LEGÍTIMAS DE ARQUITECTURA ---
@@ -382,6 +412,12 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       if (!parsed.date) return input;
       return formatToTimezoneFormatted(parsed.date, "Europe/Lisbon", "YYYY-MM-DD HH:mm:ss");
     },
+    warningCheck: (parsed) => {
+      if (!parsed.hasTimezone) {
+        return "La entrada no tiene zona horaria. Se convertirá a Europe/Lisbon como si fuera UTC. El resultado puede tener un desplazamiento de +1h (verano) o ser correcto (invierno).";
+      }
+      return null;
+    },
   },
   {
     id: "fmt_es_raw_formatted",
@@ -394,6 +430,12 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       const parsed = parseFlexibleDate(input);
       if (!parsed.date) return input;
       return formatToTimezoneFormatted(parsed.date, "Europe/Madrid", "YYYY-MM-DD HH:mm:ss");
+    },
+    warningCheck: (parsed) => {
+      if (!parsed.hasTimezone) {
+        return "La entrada no tiene zona horaria. Se convertirá a Europe/Madrid como si fuera UTC. El resultado puede tener un desplazamiento de +2h (verano) o +1h (invierno).";
+      }
+      return null;
     },
   },
 ];

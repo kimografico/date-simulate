@@ -1,3 +1,5 @@
+import { ParsedDateResult } from './utils/timezone';
+
 export type LayerId = 'front' | 'aso' | 'apx' | 'host';
 
 export type FlowDirection = 'ida' | 'vuelta';
@@ -30,6 +32,7 @@ export interface ConversionItem {
   category: ConversionCategory;
   description: string;
   apply: (input: string) => string;
+  warningCheck?: (parsed: ParsedDateResult) => string | null;
 }
 
 export interface ColumnStep {

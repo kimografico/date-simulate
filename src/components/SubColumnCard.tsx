@@ -11,8 +11,9 @@ import {
   Server,
   Clock,
   Info,
+  AlertTriangle,
 } from 'lucide-react';
-import { getCurrentDeviceISO } from '../utils/timezone';
+import { getCurrentDeviceISO, parseFlexibleDate } from '../utils/timezone';
 
 interface SubColumnCardProps {
   layerId: LayerId;
@@ -61,6 +62,7 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const [hoverTooltip, setHoverTooltip] = useState<{
     item: ConversionItem;
+    warning: string | null;
     x: number;
     y: number;
   } | null>(null);
@@ -69,10 +71,12 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
     let current = inputValue;
     return (columnConfig?.steps || []).map((step) => {
       const item = CONVERSION_CATALOG.find((c) => c.id === step.conversionId);
+      const parsed = parseFlexibleDate(current);
+      const warning = item?.warningCheck?.(parsed) ?? null;
       if (item) {
         current = item.apply(current);
       }
-      return { step, item, output: current };
+      return { step, item, output: current, warning };
     });
   }, [columnConfig?.steps, inputValue]);
 
@@ -83,16 +87,19 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
   const handleMoveUp = (index: number) => {
     if (index === 0) return;
     onMoveStep(columnConfig.id, index, columnConfig.id, index - 1, false);
+    setHoverTooltip(null);
   };
 
   const handleMoveDown = (index: number) => {
     if (index === currentStepIds.length - 1) return;
     onMoveStep(columnConfig.id, index, columnConfig.id, index + 1, false);
+    setHoverTooltip(null);
   };
 
   const handleDelete = (index: number) => {
     const newSteps = currentStepIds.filter((_, i) => i !== index);
     onUpdateSteps(columnConfig.id, newSteps);
+    setHoverTooltip(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -215,7 +222,7 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
           <div className="flex-1 rounded-lg border border-dashed border-slate-800/60 hover:border-indigo-500/30 transition min-h-[40px]" />
         ) : (
           <div className="flex flex-col gap-1 overflow-y-auto max-h-[160px] pr-0.5">
-            {stepsList.map(({ step, item }, idx) => {
+            {stepsList.map(({ step, item, warning }, idx) => {
               if (!item) return null;
               return (
                 <div
@@ -237,17 +244,27 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
                     handleDrop(e, idx);
                   }}
                   onDragOver={(e) => e.preventDefault()}
-                  onMouseEnter={(e) => setHoverTooltip({ item, x: e.clientX, y: e.clientY })}
-                  onMouseMove={(e) => setHoverTooltip({ item, x: e.clientX, y: e.clientY })}
+                  onMouseEnter={(e) => setHoverTooltip({ item, warning, x: e.clientX, y: e.clientY })}
+                  onMouseMove={(e) => setHoverTooltip({ item, warning, x: e.clientX, y: e.clientY })}
                   onMouseLeave={() => setHoverTooltip(null)}
-                  className="conversion-chip bg-slate-950/80 border border-slate-800 hover:border-indigo-500/50 rounded-md px-2 py-1 transition flex items-center justify-between gap-1.5 group"
+                  className={`conversion-chip bg-slate-950/80 border rounded-md px-2 py-1 transition flex items-center justify-between gap-1.5 group ${
+                    warning
+                      ? 'border-amber-500/70 hover:border-amber-400'
+                      : 'border-slate-800 hover:border-indigo-500/50'
+                  }`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <GripVertical className="w-3.5 h-3.5 text-slate-500 shrink-0 cursor-grab active:cursor-grabbing" />
                     <span className="text-xs font-mono font-bold text-slate-200 truncate" title={item.signature}>
                       {item.label}
                     </span>
-                    <Info className="w-3 h-3 text-slate-600 group-hover:text-indigo-400 shrink-0 transition-colors" />
+                    {warning ? (
+                      <span title={warning}>
+                        <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                      </span>
+                    ) : (
+                      <Info className="w-3 h-3 text-slate-600 group-hover:text-indigo-400 shrink-0 transition-colors" />
+                    )}
                   </div>
 
                   <div className="flex items-center gap-0.5 shrink-0">
@@ -316,7 +333,11 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
             left: Math.max(16, Math.min(hoverTooltip.x - 330, window.innerWidth - 340)),
             zIndex: 9999,
           }}
-          className="pointer-events-none w-80 bg-slate-950/95 border border-indigo-500/60 rounded-xl p-3 shadow-2xl backdrop-blur-md animate-in fade-in duration-100 flex flex-col gap-1.5"
+          className={`pointer-events-none w-80 bg-slate-950/95 rounded-xl p-3 shadow-2xl backdrop-blur-md animate-in fade-in duration-100 flex flex-col gap-1.5 border ${
+            hoverTooltip.warning
+              ? 'border-amber-500/60'
+              : 'border-indigo-500/60'
+          }`}
         >
           <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-800">
             <span className="text-xs font-bold font-mono text-indigo-300 truncate">
@@ -329,6 +350,19 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
           <p className="text-[11px] text-slate-300 leading-tight">
             {hoverTooltip.item.description}
           </p>
+          {hoverTooltip.warning && (
+            <div className="mt-0.5 p-2 bg-amber-950/60 border border-amber-500/40 rounded-lg">
+              <div className="flex items-center gap-1 mb-0.5">
+                <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className="text-[10px] uppercase font-bold text-amber-400 font-mono">
+                  Aviso
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-200 leading-tight">
+                {hoverTooltip.warning}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
