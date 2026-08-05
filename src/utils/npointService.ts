@@ -2,6 +2,7 @@ import { Board } from '../types';
 
 const STORAGE_BIN_KEY = 'npoint_bin_id';
 const STORAGE_BOARDS_KEY = 'local_boards_catalog_v1';
+const STORAGE_MODE_KEY = 'storage_mode';
 
 export const DEFAULT_INITIAL_BOARD: Board = {
   id: 'board-default',
@@ -78,6 +79,22 @@ export function setStoredBinId(binId: string): void {
   }
 }
 
+export function getStorageMode(): 'local' | 'npoint' {
+  try {
+    const mode = localStorage.getItem(STORAGE_MODE_KEY);
+    if (mode === 'npoint') return 'npoint';
+  } catch {}
+  return 'local';
+}
+
+export function setStorageMode(mode: 'local' | 'npoint'): void {
+  try {
+    localStorage.setItem(STORAGE_MODE_KEY, mode);
+  } catch (e) {
+    console.error('Error saving storage mode to localStorage', e);
+  }
+}
+
 export function normalizeNpointUrl(input: string): string {
   const target = (input || DEFAULT_NPOINT_BIN_ID).trim();
   if (!target) return `https://api.npoint.io/${DEFAULT_NPOINT_BIN_ID}`;
@@ -116,7 +133,7 @@ export function saveLocalBoards(boards: Board[]): void {
 export async function fetchBoardsFromNpoint(binId: string): Promise<{ boards: Board[]; fromNpoint: boolean }> {
   const url = normalizeNpointUrl(binId);
   if (!url) {
-    return { boards: getLocalBoards(), fromNpoint: false };
+    return { boards: [], fromNpoint: false };
   }
 
   try {
@@ -136,19 +153,16 @@ export async function fetchBoardsFromNpoint(binId: string): Promise<{ boards: Bo
       return { boards: boardsArray, fromNpoint: true };
     }
   } catch (err) {
-    console.warn('Failed to fetch from npoint, falling back to local boards:', err);
+    console.warn('Failed to fetch from npoint:', err);
   }
 
-  return { boards: getLocalBoards(), fromNpoint: false };
+  return { boards: [], fromNpoint: false };
 }
 
 export async function saveBoardsToNpoint(binId: string, boards: Board[]): Promise<{ success: boolean; message?: string }> {
-  // Always update local storage
-  saveLocalBoards(boards);
-
   const url = normalizeNpointUrl(binId);
   if (!url) {
-    return { success: true, message: 'Guardado localmente (sin Bin ID de npoint.io configurado).' };
+    return { success: false, message: 'Sin Bin ID de npoint.io configurado.' };
   }
 
   try {
@@ -161,7 +175,6 @@ export async function saveBoardsToNpoint(binId: string, boards: Board[]): Promis
     });
 
     if (!response.ok) {
-      // Try PUT as fallback
       const putRes = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -172,12 +185,12 @@ export async function saveBoardsToNpoint(binId: string, boards: Board[]): Promis
       }
     }
 
-    return { success: true, message: 'Guardado con éxito en npoint.io y localmente.' };
+    return { success: true, message: 'Guardado con éxito en npoint.io.' };
   } catch (err: any) {
     console.error('Error saving to npoint.io:', err);
     return {
       success: false,
-      message: `Guardado en local, pero falló el envío a npoint.io: ${err?.message || 'Error de red'}`,
+      message: `Error al guardar en npoint.io: ${err?.message || 'Error de red'}`,
     };
   }
 }

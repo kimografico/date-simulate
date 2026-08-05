@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { ColumnConfig, ColumnStep, CalculatedNode, Board } from "./types";
 import { CONVERSION_CATALOG } from "./data/conversions";
 import { parseFlexibleDate, isDST, calculateUTCReference } from "./utils/timezone";
@@ -15,6 +15,8 @@ import {
   fetchBoardsFromNpoint,
   saveBoardsToNpoint,
   getStoredBinId,
+  getStorageMode,
+  setStorageMode as persistStorageMode,
   DEFAULT_INITIAL_BOARD,
 } from "./utils/npointService";
 import { useHistory } from "./hooks/useHistory";
@@ -25,14 +27,33 @@ interface BoardSnapshot {
 }
 
 export default function App() {
-  const [storageMode, setStorageMode] = useState<'local' | 'npoint'>('local');
+  const [storageMode, setStorageMode] = useState<'local' | 'npoint'>(() => getStorageMode());
   const [boards, setBoards] = useState<Board[]>(() => {
+    if (getStorageMode() === 'npoint') return [];
     const local = getLocalBoards();
     return local.length > 0 ? local : [DEFAULT_INITIAL_BOARD];
   });
   const [activeBoardId, setActiveBoardId] = useState<string>(() => boards[0]?.id || DEFAULT_INITIAL_BOARD.id);
   const [binId] = useState<string>(() => getStoredBinId());
   const [isSavingNpoint, setIsSavingNpoint] = useState(false);
+
+  useEffect(() => {
+    if (storageMode === 'npoint' && boards.length === 0) {
+      setIsSavingNpoint(true);
+      fetchBoardsFromNpoint(binId)
+        .then(({ boards: remoteBoards }) => {
+          if (remoteBoards.length > 0) {
+            setBoards(remoteBoards);
+            setActiveBoardId(remoteBoards[0].id);
+            setBoardState({
+              initialInputValue: remoteBoards[0].initialInputValue,
+              columns: remoteBoards[0].columns,
+            });
+          }
+        })
+        .finally(() => setIsSavingNpoint(false));
+    }
+  }, [storageMode]);
 
   // Modals state
   const [pinModalOpen, setPinModalOpen] = useState(false);
@@ -66,6 +87,7 @@ export default function App() {
   const handleToggleStorageMode = async (newMode: 'local' | 'npoint') => {
     if (newMode === storageMode) return;
     setStorageMode(newMode);
+    persistStorageMode(newMode);
 
     if (newMode === 'npoint') {
       setIsSavingNpoint(true);
