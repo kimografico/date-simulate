@@ -5,11 +5,62 @@ const STORAGE_BIN_KEY = 'npoint_bin_id';
 const STORAGE_BOARDS_KEY = 'local_boards_catalog_v1';
 const STORAGE_MODE_KEY = 'storage_mode';
 
+export const EMPTY_BOARD_COLUMNS: Board['columns'] = {
+  ida_front_aso: {
+    id: 'ida_front_aso',
+    name: 'Front → ASO',
+    direction: 'ida',
+    fromLayer: 'front',
+    toLayer: 'aso',
+    steps: [],
+  },
+  ida_aso_apx: {
+    id: 'ida_aso_apx',
+    name: 'ASO → APX',
+    direction: 'ida',
+    fromLayer: 'aso',
+    toLayer: 'apx',
+    steps: [],
+  },
+  ida_apx_host: {
+    id: 'ida_apx_host',
+    name: 'APX → HOST',
+    direction: 'ida',
+    fromLayer: 'apx',
+    toLayer: 'host',
+    steps: [],
+  },
+  vuelta_host_apx: {
+    id: 'vuelta_host_apx',
+    name: 'HOST → APX',
+    direction: 'vuelta',
+    fromLayer: 'host',
+    toLayer: 'apx',
+    steps: [],
+  },
+  vuelta_apx_aso: {
+    id: 'vuelta_apx_aso',
+    name: 'APX → ASO',
+    direction: 'vuelta',
+    fromLayer: 'apx',
+    toLayer: 'aso',
+    steps: [],
+  },
+  vuelta_aso_front: {
+    id: 'vuelta_aso_front',
+    name: 'ASO → Front',
+    direction: 'vuelta',
+    fromLayer: 'aso',
+    toLayer: 'front',
+    steps: [],
+  },
+};
+
 export const DEFAULT_INITIAL_BOARD: Board = {
   id: 'board-default',
-  name: 'Tablero Principal (Pagos)',
+  name: 'Prueba',
   updatedAt: new Date().toISOString(),
-  initialInputValue: getCurrentDeviceISO(),
+  initialInputValue: '2026-08-05T10:30:00-10:00',
   columns: {
     ida_front_aso: {
       id: 'ida_front_aso',
@@ -25,7 +76,7 @@ export const DEFAULT_INITIAL_BOARD: Board = {
       direction: 'ida',
       fromLayer: 'aso',
       toLayer: 'apx',
-      steps: [],
+      steps: [{ id: 'default_aso_apx_tz', conversionId: 'tz_utc_to_es' }],
     },
     ida_apx_host: {
       id: 'ida_apx_host',
@@ -33,7 +84,7 @@ export const DEFAULT_INITIAL_BOARD: Board = {
       direction: 'ida',
       fromLayer: 'apx',
       toLayer: 'host',
-      steps: [{ id: 'default_apx_host_fmt_european', conversionId: 'fmt_european' }],
+      steps: [{ id: 'default_apx_host_time_drop', conversionId: 'time_drop' }],
     },
     vuelta_host_apx: {
       id: 'vuelta_host_apx',
@@ -49,7 +100,7 @@ export const DEFAULT_INITIAL_BOARD: Board = {
       direction: 'vuelta',
       fromLayer: 'apx',
       toLayer: 'aso',
-      steps: [],
+      steps: [{ id: 'default_apx_aso_add_time', conversionId: 'time_add_space_midnight' }],
     },
     vuelta_aso_front: {
       id: 'vuelta_aso_front',

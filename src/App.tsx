@@ -18,6 +18,7 @@ import {
   getStorageMode,
   setStorageMode as persistStorageMode,
   DEFAULT_INITIAL_BOARD,
+  EMPTY_BOARD_COLUMNS,
 } from "./utils/npointService";
 import { useHistory } from "./hooks/useHistory";
 
@@ -31,7 +32,9 @@ export default function App() {
   const [boards, setBoards] = useState<Board[]>(() => {
     if (getStorageMode() === 'npoint') return [];
     const local = getLocalBoards();
-    return local.length > 0 ? local : [DEFAULT_INITIAL_BOARD];
+    if (local.length > 0) return local;
+    saveLocalBoards([DEFAULT_INITIAL_BOARD]);
+    return [DEFAULT_INITIAL_BOARD];
   });
   const [activeBoardId, setActiveBoardId] = useState<string>(() => boards[0]?.id || DEFAULT_INITIAL_BOARD.id);
   const [binId] = useState<string>(() => getStoredBinId());
@@ -65,9 +68,11 @@ export default function App() {
     if (found) return found;
     if (boards.length > 0) return boards[0];
     return {
-      ...DEFAULT_INITIAL_BOARD,
       id: activeBoardId || 'temp-board',
       name: 'Nuevo Tablero',
+      updatedAt: new Date().toISOString(),
+      initialInputValue: getCurrentDeviceISO(),
+      columns: EMPTY_BOARD_COLUMNS,
     };
   }, [boards, activeBoardId]);
 
@@ -113,8 +118,8 @@ export default function App() {
       } else {
         setActiveBoardId('temp-board');
         setBoardState({
-          initialInputValue: DEFAULT_INITIAL_BOARD.initialInputValue,
-          columns: DEFAULT_INITIAL_BOARD.columns,
+          initialInputValue: getCurrentDeviceISO(),
+          columns: EMPTY_BOARD_COLUMNS,
         });
       }
     }
@@ -184,8 +189,8 @@ export default function App() {
     } else {
       setActiveBoardId('temp-board');
       setBoardState({
-        initialInputValue: DEFAULT_INITIAL_BOARD.initialInputValue,
-        columns: DEFAULT_INITIAL_BOARD.columns,
+        initialInputValue: getCurrentDeviceISO(),
+        columns: EMPTY_BOARD_COLUMNS,
       });
     }
 
@@ -205,7 +210,7 @@ export default function App() {
       name,
       updatedAt: new Date().toISOString(),
       initialInputValue: getCurrentDeviceISO(),
-      columns: DEFAULT_INITIAL_BOARD.columns,
+      columns: EMPTY_BOARD_COLUMNS,
     };
 
     const nextBoards = [...boards, newBoard];
