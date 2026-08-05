@@ -8,6 +8,7 @@ import {
   getFormattedOffset,
   isDST,
   observesDST,
+  getCurrentDeviceISO,
 } from '../utils/timezone';
 import { X, Globe, RefreshCw, Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
 
@@ -51,12 +52,12 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
   onClose,
   defaultDateValue,
 }) => {
-  const [inputValue, setInputValue] = useState(defaultDateValue);
+  const [inputValue, setInputValue] = useState('');
   const [copiedInput, setCopiedInput] = useState(false);
   const [copiedRegionTz, setCopiedRegionTz] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !inputValue) {
       setInputValue(defaultDateValue);
     }
   }, [isOpen, defaultDateValue]);
@@ -67,8 +68,7 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
   const isValidDate = !!parsed.date;
 
   const handleUseCurrentDate = () => {
-    const now = new Date();
-    setInputValue(now.toISOString());
+    setInputValue(getCurrentDeviceISO());
   };
 
   const handleCopyInputToClipboard = () => {
@@ -141,7 +141,7 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
               <button
                 onClick={() => setInputValue(defaultDateValue)}
                 className="flex items-center justify-center gap-1 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-slate-700/80 px-2.5 h-[34px] rounded-lg transition shrink-0"
-                title="Cargar la fecha/hora del input principal del main"
+                title="Cargar la fecha/hora del input principal"
               >
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>
@@ -244,17 +244,11 @@ export const EquivalenciesModal: React.FC<EquivalenciesModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-400">
+        <div className="p-3 border-t border-slate-800 bg-slate-950/80 text-xs text-slate-400">
           <div className="space-y-0.5 text-[11px] text-slate-400 font-sans">
             <p>• Italia y Alemania comparten zona horaria y horarios de verano/invierno con España.</p>
             <p>• Portugal y Canarias comparten zona horaria y horarios de verano/invierno.</p>
           </div>
-          <button
-            onClick={onClose}
-            className="self-end sm:self-auto bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1 rounded-lg transition shrink-0"
-          >
-            Cerrar
-          </button>
         </div>
       </div>
     </div>

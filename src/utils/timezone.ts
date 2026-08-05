@@ -20,8 +20,8 @@ export interface RegionEquivalence {
 }
 
 export const EQUIVALENCE_REGIONS: RegionEquivalence[] = [
-  { country: 'España', flagCode: 'es', timezone: 'Europe/Madrid', label: 'España (Madrid)' },
   { country: 'Portugal', flagCode: 'pt', timezone: 'Europe/Lisbon', label: 'Portugal (Lisboa)' },
+  { country: 'España', flagCode: 'es', timezone: 'Europe/Madrid', label: 'España (Madrid)' },
   { country: 'Hawaii', customEmoji: '🥥', timezone: 'Pacific/Honolulu', label: 'Hawaii' },
   { country: 'Kiribati', customEmoji: '🌊', timezone: 'Pacific/Kiritimati', label: 'Kiribati' },
   { country: 'Baker', customEmoji: '🏝️', timezone: 'Etc/GMT+12', label: 'Isla Baker (UTC-12)' },
