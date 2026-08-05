@@ -9,7 +9,9 @@ import {
   GripVertical,
   Smartphone,
   Server,
+  Clock,
 } from 'lucide-react';
+import { getCurrentDeviceISO } from '../utils/timezone';
 
 interface SubColumnCardProps {
   layerId: LayerId;
@@ -162,13 +164,23 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
               Entrada
             </div>
-            <input
-              type="text"
-              value={initialInputValue}
-              onChange={(e) => onInitialInputChange?.(e.target.value)}
-              placeholder="Escribe string de fecha..."
-              className="w-full bg-slate-950 text-slate-100 font-mono text-base font-medium px-2.5 py-1.5 rounded-lg border border-violet-500/50 focus:outline-none focus:ring-1 focus:ring-violet-500 shadow-inner mt-[5px]"
-            />
+            <div className="relative mt-[5px]">
+              <input
+                type="text"
+                value={initialInputValue}
+                onChange={(e) => onInitialInputChange?.(e.target.value)}
+                placeholder="Escribe string de fecha..."
+                className="w-full bg-slate-950 text-slate-100 font-mono text-base font-medium px-2.5 py-1.5 pr-9 rounded-lg border border-violet-500/50 focus:outline-none focus:ring-1 focus:ring-violet-500 shadow-inner"
+              />
+              <button
+                type="button"
+                onClick={() => onInitialInputChange?.(getCurrentDeviceISO())}
+                title="Usar fecha y hora actual del dispositivo"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-violet-400 transition"
+              >
+                <Clock className="w-4 h-4" />
+              </button>
+            </div>
           </>
         ) : (
           <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 py-0.5">

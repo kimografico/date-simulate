@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { ColumnConfig, ColumnStep, CalculatedNode, Board } from "./types";
 import { CONVERSION_CATALOG } from "./data/conversions";
-import { parseFlexibleDate, isDST, calculateUTCReference } from "./utils/timezone";
+import { parseFlexibleDate, isDST, calculateUTCReference, getCurrentDeviceISO } from "./utils/timezone";
 import { CircuitBoard } from "./components/CircuitBoard";
 import { CatalogDrawer } from "./components/CatalogDrawer";
 import { SummaryPanel } from "./components/SummaryPanel";
@@ -204,7 +204,7 @@ export default function App() {
       id: newId,
       name,
       updatedAt: new Date().toISOString(),
-      initialInputValue: "2026-07-30T23:30:00+02:00",
+      initialInputValue: getCurrentDeviceISO(),
       columns: DEFAULT_INITIAL_BOARD.columns,
     };
 

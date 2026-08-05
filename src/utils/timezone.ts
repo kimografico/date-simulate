@@ -374,6 +374,16 @@ export function formatToTimezoneISO(date: Date, timeZone: string): string {
 }
 
 /**
+ * Returns the current device date/time as an ISO string with timezone offset.
+ * Example: "2026-08-05T14:30:00+02:00"
+ */
+export function getCurrentDeviceISO(): string {
+  const now = new Date();
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return formatToTimezoneISO(now, tz);
+}
+
+/**
  * Format date to YYYY-MM-DD HH:mm:ss in target timezone (without timezone offset indicator)
  */
 export function formatToTimezoneFormatted(date: Date, timeZone: string, pattern: 'YYYY-MM-DD HH:mm:ss' | 'DD/MM/YYYY HH:mm' | 'YYYY-MM-DD'): string {

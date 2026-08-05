@@ -1,4 +1,5 @@
 import { Board } from '../types';
+import { getCurrentDeviceISO } from './timezone';
 
 const STORAGE_BIN_KEY = 'npoint_bin_id';
 const STORAGE_BOARDS_KEY = 'local_boards_catalog_v1';
@@ -8,7 +9,7 @@ export const DEFAULT_INITIAL_BOARD: Board = {
   id: 'board-default',
   name: 'Tablero Principal (Pagos)',
   updatedAt: new Date().toISOString(),
-  initialInputValue: '2026-07-30T23:30:00+02:00',
+  initialInputValue: getCurrentDeviceISO(),
   columns: {
     ida_front_aso: {
       id: 'ida_front_aso',
