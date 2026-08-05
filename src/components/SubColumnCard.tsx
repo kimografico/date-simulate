@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ColumnConfig, FlowDirection, LayerId } from '../types';
+import { ColumnConfig, ConversionItem, FlowDirection, LayerId } from '../types';
 import { LAYERS, CONVERSION_CATALOG } from '../data/conversions';
 import { FlagIcon } from './FlagIcon';
 import {
@@ -10,6 +10,7 @@ import {
   Smartphone,
   Server,
   Clock,
+  Info,
 } from 'lucide-react';
 import { getCurrentDeviceISO } from '../utils/timezone';
 
@@ -58,6 +59,11 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
 }) => {
   const layer = LAYERS[layerId];
   const [isDragOver, setIsDragOver] = useState(false);
+  const [hoverTooltip, setHoverTooltip] = useState<{
+    item: ConversionItem;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const stepsList = useMemo(() => {
     let current = inputValue;
@@ -231,13 +237,17 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
                     handleDrop(e, idx);
                   }}
                   onDragOver={(e) => e.preventDefault()}
-                  className="conversion-chip bg-slate-950/80 border border-slate-800 hover:border-indigo-500/50 rounded-md px-2 py-1 transition flex items-center justify-between gap-1.5"
+                  onMouseEnter={(e) => setHoverTooltip({ item, x: e.clientX, y: e.clientY })}
+                  onMouseMove={(e) => setHoverTooltip({ item, x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHoverTooltip(null)}
+                  className="conversion-chip bg-slate-950/80 border border-slate-800 hover:border-indigo-500/50 rounded-md px-2 py-1 transition flex items-center justify-between gap-1.5 group"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <GripVertical className="w-3.5 h-3.5 text-slate-500 shrink-0 cursor-grab active:cursor-grabbing" />
                     <span className="text-xs font-mono font-bold text-slate-200 truncate" title={item.signature}>
                       {item.label}
                     </span>
+                    <Info className="w-3 h-3 text-slate-600 group-hover:text-indigo-400 shrink-0 transition-colors" />
                   </div>
 
                   <div className="flex items-center gap-0.5 shrink-0">
@@ -296,6 +306,31 @@ export const SubColumnCard: React.FC<SubColumnCardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Floating Hover Tooltip Recuadro */}
+      {hoverTooltip && (
+        <div
+          style={{
+            position: "fixed",
+            top: Math.min(hoverTooltip.y + 12, window.innerHeight - 260),
+            left: Math.max(16, Math.min(hoverTooltip.x - 330, window.innerWidth - 340)),
+            zIndex: 9999,
+          }}
+          className="pointer-events-none w-80 bg-slate-950/95 border border-indigo-500/60 rounded-xl p-3 shadow-2xl backdrop-blur-md animate-in fade-in duration-100 flex flex-col gap-1.5"
+        >
+          <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-800">
+            <span className="text-xs font-bold font-mono text-indigo-300 truncate">
+              {hoverTooltip.item.signature}
+            </span>
+            <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800/50 shrink-0">
+              {hoverTooltip.item.category}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-tight">
+            {hoverTooltip.item.description}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
