@@ -188,7 +188,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
-            <span className="hidden sm:inline">Catálogo</span>
+            <span className="hidden sm:inline">{isCatalogOpen ? "Cerrar Catálogo" : "Abrir Catálogo"}</span>
           </button>
         </div>
       </div>
