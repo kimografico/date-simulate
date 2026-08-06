@@ -9,6 +9,7 @@ export interface ParsedDateResult {
   hasTime: boolean;
   hasTimezone: boolean;
   originalFormat: 'iso' | 'date-only' | 'datetime-space' | 'timestamp' | 'custom' | 'invalid';
+  fractionalSeconds?: string;
 }
 
 export interface RegionEquivalence {
@@ -152,10 +153,36 @@ export function parseFlexibleDate(str: string): ParsedDateResult {
     }
   }
 
-  // 3. ISO / YYYY-MM-DD format (YYYY-MM-DD or YYYY-MM-DD HH:mm or YYYY-MM-DDTHH:mm:ss+02:00 etc)
-  const isoLikeMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*(Z|[+-]\d{2}:?\d{2})?$/i);
+  // 3. Dot-separated: YYYY-MM-DD-HH.MM.SS.ffffff (e.g. 2026-05-25-17.10.10.490205)
+  const dotSepMatch = trimmed.match(
+    /^(\d{4})-(\d{2})-(\d{2})-(\d{2})\.(\d{2})\.(\d{2})(?:\.(\d+))?$/
+  );
+  if (dotSepMatch) {
+    const [, yStr, mStr, dStr, hhStr, mmStr, ssStr, fracStr] = dotSepMatch;
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const day = parseInt(dStr, 10);
+    const hours = parseInt(hhStr, 10);
+    const minutes = parseInt(mmStr, 10);
+    const seconds = parseInt(ssStr, 10);
+
+    const dateObj = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
+    if (!isNaN(dateObj.getTime())) {
+      return {
+        date: dateObj,
+        rawString: str,
+        hasTime: true,
+        hasTimezone: false,
+        originalFormat: 'datetime-space',
+        fractionalSeconds: fracStr || '',
+      };
+    }
+  }
+
+  // 4. ISO / YYYY-MM-DD format (YYYY-MM-DD or YYYY-MM-DD HH:mm or YYYY-MM-DDTHH:mm:ss+02:00 etc)
+  const isoLikeMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?(\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})?$/i);
   if (isoLikeMatch) {
-    const [, yStr, mStr, dStr, hhStr, mmStr, ssStr, tzStr] = isoLikeMatch;
+    const [, yStr, mStr, dStr, hhStr, mmStr, ssStr, fracStr, tzStr] = isoLikeMatch;
     const year = parseInt(yStr, 10);
     const month = parseInt(mStr, 10) - 1;
     const day = parseInt(dStr, 10);
@@ -168,7 +195,7 @@ export function parseFlexibleDate(str: string): ParsedDateResult {
     let dateObj: Date;
     if (hasTimezone && tzStr) {
       const pad = (n: number) => String(n).padStart(2, '0');
-      const isoStr = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}${tzStr}`;
+      const isoStr = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}${fracStr || ''}${tzStr}`;
       dateObj = new Date(isoStr);
     } else {
       dateObj = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
@@ -180,12 +207,13 @@ export function parseFlexibleDate(str: string): ParsedDateResult {
         rawString: str,
         hasTime,
         hasTimezone,
-        originalFormat: hasTimezone ? 'iso' : (hasTime ? 'datetime-space' : 'date-only')
+        originalFormat: hasTimezone ? 'iso' : (hasTime ? 'datetime-space' : 'date-only'),
+        fractionalSeconds: fracStr ? fracStr.substring(1) : '',
       };
     }
   }
 
-  // 4. Fallback standard Date parsing
+  // 5. Fallback standard Date parsing
   const hasTime = /[T\s]\d{1,2}:\d{2}/.test(trimmed);
   const hasTimezone = /Z|[+-]\d{2}:?\d{2}$/.test(trimmed);
   
@@ -386,7 +414,7 @@ export function getCurrentDeviceISO(): string {
 /**
  * Format date to YYYY-MM-DD HH:mm:ss in target timezone (without timezone offset indicator)
  */
-export function formatToTimezoneFormatted(date: Date, timeZone: string, pattern: 'YYYY-MM-DD HH:mm:ss' | 'DD/MM/YYYY HH:mm' | 'YYYY-MM-DD'): string {
+export function formatToTimezoneFormatted(date: Date, timeZone: string, pattern: 'YYYY-MM-DD HH:mm:ss' | 'DD/MM/YYYY HH:mm' | 'YYYY-MM-DD' | 'YYYY-MM-DD-HH.MM.SS' | 'YYYY-MM-DD HH:mm:ss.f', fractionalSeconds?: string): string {
   const resolvedTz = timeZone === 'Device'
     ? Intl.DateTimeFormat().resolvedOptions().timeZone
     : timeZone;
@@ -420,6 +448,13 @@ export function formatToTimezoneFormatted(date: Date, timeZone: string, pattern:
   }
   if (pattern === 'DD/MM/YYYY HH:mm') {
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  }
+  if (pattern === 'YYYY-MM-DD-HH.MM.SS') {
+    return `${yyyy}-${mm}-${dd}-${hh}.${min}.${ss}`;
+  }
+  if (pattern === 'YYYY-MM-DD HH:mm:ss.f') {
+    const frac = fractionalSeconds ? `.${fractionalSeconds}` : '';
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}${frac}`;
   }
   return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
 }

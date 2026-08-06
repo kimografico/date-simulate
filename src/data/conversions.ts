@@ -66,7 +66,7 @@ export const LAYERS: Record<string, LayerInfo> = {
   },
 };
 
-function formatSamePattern(input: string, dateObj: Date): string {
+function formatSamePattern(input: string, dateObj: Date, fractionalSeconds?: string): string {
   const trimmed = input.trim();
   const pad = (n: number) => String(n).padStart(2, "0");
   const yyyy = dateObj.getUTCFullYear();
@@ -75,27 +75,31 @@ function formatSamePattern(input: string, dateObj: Date): string {
   const hh = pad(dateObj.getUTCHours());
   const min = pad(dateObj.getUTCMinutes());
   const ss = pad(dateObj.getUTCSeconds());
+  const frac = fractionalSeconds ? `.${fractionalSeconds}` : "";
 
-  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
-    const hasSeconds = trimmed.split(":").length === 3;
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}${hasSeconds ? `:${ss}` : ""}`;
+  if (/^\d{4}-\d{2}-\d{2}-\d{2}\.\d{2}\.\d{2}/.test(trimmed)) {
+    return `${yyyy}-${mm}-${dd}-${hh}.${min}.${ss}${frac}`;
   }
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?(\.\d+)?$/.test(trimmed)) {
     const hasSeconds = trimmed.split(":").length === 3;
-    return `${yyyy}-${mm}-${dd}T${hh}:${min}${hasSeconds ? `:${ss}` : ""}`;
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}${hasSeconds ? `:${ss}` : ""}${frac}`;
   }
-  if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?$/.test(trimmed)) {
     const hasSeconds = trimmed.split(":").length === 3;
-    return `${dd}/${mm}/${yyyy} ${hh}:${min}${hasSeconds ? `:${ss}` : ""}`;
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}${hasSeconds ? `:${ss}` : ""}${frac}`;
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(:\d{2})?(\.\d+)?$/.test(trimmed)) {
+    const hasSeconds = trimmed.split(":").length === 3;
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}${hasSeconds ? `:${ss}` : ""}${frac}`;
   }
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
     return `${dd}/${mm}/${yyyy}`;
   }
   if (trimmed.includes("T")) {
-    return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}`;
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}${frac}`;
   }
   if (trimmed.includes(" ")) {
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}${frac}`;
   }
   return `${yyyy}-${mm}-${dd}`;
 }
@@ -119,7 +123,7 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
         return formatToTimezoneISO(parsed.date, "Europe/Lisbon");
       }
       const dateObj = new Date(parsed.date.getTime() - 3600000);
-      return formatSamePattern(input, dateObj);
+      return formatSamePattern(input, dateObj, parsed.fractionalSeconds);
     },
   },
   {
@@ -136,7 +140,7 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
         return formatToTimezoneISO(parsed.date, "Europe/Madrid");
       }
       const dateObj = new Date(parsed.date.getTime() + 3600000);
-      return formatSamePattern(input, dateObj);
+      return formatSamePattern(input, dateObj, parsed.fractionalSeconds);
     },
   },
   {
@@ -350,7 +354,7 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
     apply: (input: string) => {
       const parsed = parseFlexibleDate(input);
       if (!parsed.date) return input;
-      return formatSamePattern(input, parsed.date);
+      return formatSamePattern(input, parsed.date, parsed.fractionalSeconds);
     },
   },
   {
@@ -362,7 +366,7 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
     apply: (input: string) => {
       const parsed = parseFlexibleDate(input);
       if (!parsed.date) return input;
-      return formatSamePattern(input, parsed.date);
+      return formatSamePattern(input, parsed.date, parsed.fractionalSeconds);
     },
   },
   {
@@ -381,6 +385,32 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
         return "La entrada no tiene zona horaria. El timestamp se calculará asumiendo UTC, lo que puede ser incorrecto si la entrada era hora local.";
       }
       return null;
+    },
+  },
+  {
+    id: "fmt_dot_separated",
+    label: "Formatear YYYY-MM-DD-HH.MM.SS",
+    signature: "Formato Dot-Separated",
+    category: "representation",
+    description:
+      "Formatea la fecha con guión separando fecha de hora y puntos entre componentes temporales (ej. 2026-05-25-17.10.10.490205).",
+    apply: (input: string) => {
+      const parsed = parseFlexibleDate(input);
+      if (!parsed.date) return input;
+      return formatToTimezoneFormatted(parsed.date, "Device", "YYYY-MM-DD-HH.MM.SS");
+    },
+  },
+  {
+    id: "fmt_fractional_seconds",
+    label: "Formatear YYYY-MM-DD HH:mm:ss.f",
+    signature: "Formato con Fracciones de Segundo",
+    category: "representation",
+    description:
+      "Formatea la fecha con espacio como separador incluyendo fracciones de segundo (ej. 2022-12-12 01:00:00.0 o 2026-05-25 17:10:10.490205).",
+    apply: (input: string) => {
+      const parsed = parseFlexibleDate(input);
+      if (!parsed.date) return input;
+      return formatToTimezoneFormatted(parsed.date, "Device", "YYYY-MM-DD HH:mm:ss.f", parsed.fractionalSeconds || "0");
     },
   },
 
