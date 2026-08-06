@@ -6,6 +6,16 @@ import {
   getTimezoneOffsetMinutes,
 } from "../utils/timezone";
 
+function getDeviceTimezoneOffset(date: Date): string {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const offset = getTimezoneOffsetMinutes(date, tz);
+  const sign = offset >= 0 ? "+" : "-";
+  const abs = Math.abs(offset);
+  const h = String(Math.floor(abs / 60)).padStart(2, "0");
+  const m = String(abs % 60).padStart(2, "0");
+  return `${sign}${h}:${m}`;
+}
+
 export const LAYERS: Record<string, LayerInfo> = {
   front: {
     id: "front",
@@ -77,6 +87,14 @@ function formatSamePattern(input: string, dateObj: Date, fractionalSeconds?: str
   const ss = pad(dateObj.getUTCSeconds());
   const frac = fractionalSeconds ? `.${fractionalSeconds}` : "";
 
+  if (/^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2},?\s+GMT[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    const offset = getDeviceTimezoneOffset(dateObj);
+    return `${yyyy}/${mm}/${dd} ${hh}:${min}, GMT${offset}`;
+  }
+  if (/^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}(:\d{2})?(\.\d+)?$/.test(trimmed)) {
+    const hasSeconds = trimmed.split(":").length === 3;
+    return `${yyyy}/${mm}/${dd} ${hh}:${min}${hasSeconds ? `:${ss}` : ""}${frac}`;
+  }
   if (/^\d{4}-\d{2}-\d{2}-\d{2}\.\d{2}\.\d{2}/.test(trimmed)) {
     return `${yyyy}-${mm}-${dd}-${hh}.${min}.${ss}${frac}`;
   }
@@ -367,6 +385,39 @@ export const CONVERSION_CATALOG: ConversionItem[] = [
       const parsed = parseFlexibleDate(input);
       if (!parsed.date) return input;
       return formatSamePattern(input, parsed.date, parsed.fractionalSeconds);
+    },
+  },
+  {
+    id: "fmt_slash",
+    label: "Formatear YYYY/MM/DD HH:mm",
+    signature: "Formato YYYY/MM/DD HH:mm",
+    category: "representation",
+    description: "Formatea la fecha con barras y año primero (ej. 2026/08/05 20:30).",
+    apply: (input: string) => {
+      const parsed = parseFlexibleDate(input);
+      if (!parsed.date) return input;
+      return formatToTimezoneFormatted(parsed.date, "Device", "YYYY/MM/DD HH:mm");
+    },
+  },
+  {
+    id: "fmt_gmt_offset",
+    label: "Formatear YYYY/MM/DD, HH:mm GMT+HH:mm",
+    signature: "Formato GMT Offset",
+    category: "representation",
+    description:
+      "Formatea la fecha con barras y offset GMT del dispositivo (ej. 2026/08/05 20:30, GMT+02:00).",
+    apply: (input: string) => {
+      const parsed = parseFlexibleDate(input);
+      if (!parsed.date) return input;
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const d = parsed.date;
+      const yyyy = d.getUTCFullYear();
+      const mm = pad(d.getUTCMonth() + 1);
+      const dd = pad(d.getUTCDate());
+      const hh = pad(d.getUTCHours());
+      const min = pad(d.getUTCMinutes());
+      const offset = getDeviceTimezoneOffset(d);
+      return `${yyyy}/${mm}/${dd} ${hh}:${min}, GMT${offset}`;
     },
   },
   {

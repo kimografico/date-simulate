@@ -414,7 +414,7 @@ export function getCurrentDeviceISO(): string {
 /**
  * Format date to YYYY-MM-DD HH:mm:ss in target timezone (without timezone offset indicator)
  */
-export function formatToTimezoneFormatted(date: Date, timeZone: string, pattern: 'YYYY-MM-DD HH:mm:ss' | 'DD/MM/YYYY HH:mm' | 'YYYY-MM-DD' | 'YYYY-MM-DD-HH.MM.SS' | 'YYYY-MM-DD HH:mm:ss.f', fractionalSeconds?: string): string {
+export function formatToTimezoneFormatted(date: Date, timeZone: string, pattern: 'YYYY-MM-DD HH:mm:ss' | 'DD/MM/YYYY HH:mm' | 'YYYY-MM-DD' | 'YYYY-MM-DD-HH.MM.SS' | 'YYYY-MM-DD HH:mm:ss.f' | 'YYYY/MM/DD HH:mm', fractionalSeconds?: string): string {
   const resolvedTz = timeZone === 'Device'
     ? Intl.DateTimeFormat().resolvedOptions().timeZone
     : timeZone;
@@ -448,6 +448,9 @@ export function formatToTimezoneFormatted(date: Date, timeZone: string, pattern:
   }
   if (pattern === 'DD/MM/YYYY HH:mm') {
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  }
+  if (pattern === 'YYYY/MM/DD HH:mm') {
+    return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
   }
   if (pattern === 'YYYY-MM-DD-HH.MM.SS') {
     return `${yyyy}-${mm}-${dd}-${hh}.${min}.${ss}`;
